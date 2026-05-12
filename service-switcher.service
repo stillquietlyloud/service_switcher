@@ -1,0 +1,13 @@
+[Unit]
+Description=Simple service switcher
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/service_switcher
+ExecStart=/opt/service_switcher/service_switcher -config /opt/service_switcher/services.json
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

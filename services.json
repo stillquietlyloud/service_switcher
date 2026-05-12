@@ -1,0 +1,7 @@
+{
+  "command_listen_address": "0.0.0.0:20100",
+  "status_listen_address": "0.0.0.0:30100",
+  "services": {
+    "service01": "/etc/systemd/system/service01.service"
+  }
+}

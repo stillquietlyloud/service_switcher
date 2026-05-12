@@ -315,6 +315,11 @@ FakesAssemblies/
 .ntvs_analysis.dat
 node_modules/
 
+# Go build artifacts
+service_switcher
+*.test
+coverage.out
+
 # Visual Studio 6 build log
 *.plg
 
