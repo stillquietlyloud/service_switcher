@@ -2,6 +2,29 @@
   "command_listen_address": "0.0.0.0:20100",
   "status_listen_address": "0.0.0.0:30100",
   "services": {
-    "service01": "/etc/systemd/system/service01.service"
+    "image-flux": "/etc/systemd/system/image-flux.service",
+    "image-qwen": "/etc/systemd/system/image-qwen.service",
+    "image-sdxl": "/etc/systemd/system/image-sdxl.service",
+    "image-sdxl-turbo": "/etc/systemd/system/image-sdxl-turbo.service",
+    "llm-gpt120b": "/etc/systemd/system/llm-gpt120b.service",
+    "llm-gpt20b": "/etc/systemd/system/llm-gpt20b.service",
+    "llm-llama70b": "/etc/systemd/system/llm-llama70b.service",
+    "llm-mixtral-llama70b": "/etc/systemd/system/llm-mixtral-llama70b.service",
+    "llm-mixtral8x22b": "/etc/systemd/system/llm-mixtral8x22b.service",
+    "llm-nemotron-nano": "/etc/systemd/system/llm-nemotron-nano.service",
+    "llm-nemotron-super": "/etc/systemd/system/llm-nemotron-super.service",
+    "llm-qwen327b": "/etc/systemd/system/llm-qwen327b.service",
+    "llm-wizardlm8x22b": "/etc/systemd/system/llm-wizardlm8x22b.service",
+    "translator-accurate": "/etc/systemd/system/translator-accurate.service",
+    "translator-fast": "/etc/systemd/system/translator-fast.service",
+    "translator-medium": "/etc/systemd/system/translator-medium.service",
+    "tts-coqui": "/etc/systemd/system/tts-coqui.service",
+    "tts-f5": "/etc/systemd/system/tts-f5.service",
+    "tts-qwen3-clone": "/etc/systemd/system/tts-qwen3-clone.service",
+    "tts-qwen3-design": "/etc/systemd/system/tts-qwen3-design.service",
+    "tts-qwen3-studio": "/etc/systemd/system/tts-qwen3-studio.service",
+    "video-animatediff": "/etc/systemd/system/video-animatediff.service",
+    "video-ltx": "/etc/systemd/system/video-ltx.service",
+    "video-svd": "/etc/systemd/system/video-svd.service"
   }
 }

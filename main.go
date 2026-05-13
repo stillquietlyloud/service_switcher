@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 )
 
 const (
@@ -67,6 +68,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("load config: %v", err)
 	}
+
+	log.Printf("service-switcher starting, config: %s", *configPath)
+	log.Printf("services configured: %v", len(config.Services))
+	log.Printf("listening on command port: %s", config.CommandListenAddress)
+	log.Printf("listening on status port: %s", config.StatusListenAddress)
 
 	server := &Server{
 		config:  config,
@@ -203,15 +209,27 @@ func (s *Server) serveStatus(ctx context.Context, listener net.Listener, errCh c
 func (s *Server) handleCommandConnection(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 
+	// Set read deadline to prevent hanging indefinitely
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+
 	reader := bufio.NewReader(io.LimitReader(conn, maxCommandBytes))
 	command, err := reader.ReadString('\n')
-	if err != nil && !errors.Is(err, io.EOF) {
-		_, _ = io.WriteString(conn, "error\n")
-		return
+	if err != nil {
+		if !errors.Is(err, io.EOF) && !errors.Is(err, context.DeadlineExceeded) {
+			log.Printf("error reading command: %v", err)
+			_, _ = io.WriteString(conn, "error\n")
+			return
+		}
+		// If we got EOF without newline, that's okay - trim and process what we got
+		if errors.Is(err, io.EOF) {
+			// command already has partial data, will be trimmed below
+			log.Printf("received EOF without newline, processing: %q", strings.TrimSpace(command))
+		}
 	}
 
 	response, err := s.handleCommand(ctx, command)
 	if err != nil {
+		log.Printf("error handling command %q: %v", strings.TrimSpace(command), err)
 		_, _ = io.WriteString(conn, "error\n")
 		return
 	}
@@ -222,21 +240,26 @@ func (s *Server) handleCommandConnection(ctx context.Context, conn net.Conn) {
 func (s *Server) handleCommand(ctx context.Context, command string) (string, error) {
 	fields := strings.Fields(strings.TrimSpace(command))
 	if len(fields) != 2 || fields[0] != "start" {
+		log.Printf("invalid command format: %q", strings.TrimSpace(command))
 		return "", errors.New("unsupported command")
 	}
 
 	name := fields[1]
 	location, ok := s.config.Services[name]
 	if !ok {
+		log.Printf("service not found in config: %q", name)
 		return "", errors.New("unknown service")
 	}
 
 	unit, err := normalizeUnit(location)
 	if err != nil {
+		log.Printf("invalid unit path for service %q: %v", name, err)
 		return "", err
 	}
 
+	log.Printf("starting service: %q (unit: %q)", name, unit)
 	if err := s.starter.Start(ctx, unit); err != nil {
+		log.Printf("failed to start service %q: %v", unit, err)
 		return "", err
 	}
 
@@ -244,6 +267,7 @@ func (s *Server) handleCommand(ctx context.Context, command string) (string, err
 	s.lastActivated = name
 	s.mu.Unlock()
 
+	log.Printf("successfully started service: %q", name)
 	return "ok\n", nil
 }
 

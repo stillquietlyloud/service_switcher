@@ -1,0 +1,446 @@
+{
+  "timestamp_utc": "2026-05-13T13:38:24.958659+00:00",
+  "config_path": "/git/service_switcher/services.json",
+  "command_address": "0.0.0.0:20100",
+  "status_address": "0.0.0.0:30100",
+  "fixed_wait_seconds": 90,
+  "results": [
+    {
+      "service_name": "image-flux",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.017,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "image-flux"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/image-flux",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.017,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "image-qwen",
+      "switch_ok": false,
+      "switch_response": "error",
+      "switch_elapsed_seconds": 0.003,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "image-flux"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/image-qwen",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "image-sdxl",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.037,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "image-sdxl"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/image-sdxl",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "image-sdxl-turbo",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.048,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "image-sdxl-turbo"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/image-sdxl-turbo",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "llm-gpt120b",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.032,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "llm-gpt120b"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/llm-gpt120b",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "llm-gpt20b",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.03,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "llm-gpt20b"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/llm-gpt20b",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "llm-llama70b",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.026,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "llm-llama70b"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/llm-llama70b",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "llm-mixtral-llama70b",
+      "switch_ok": false,
+      "switch_response": "error",
+      "switch_elapsed_seconds": 0.017,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "llm-llama70b"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/llm-mixtral-llama70b",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "llm-mixtral8x22b",
+      "switch_ok": false,
+      "switch_response": "error",
+      "switch_elapsed_seconds": 0.013,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "llm-llama70b"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/llm-mixtral8x22b",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "llm-nemotron-nano",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.03,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "llm-nemotron-nano"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/llm-nemotron-nano",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.0,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "llm-nemotron-super",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.027,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "llm-nemotron-super"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/llm-nemotron-super",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "llm-qwen327b",
+      "switch_ok": false,
+      "switch_response": "error",
+      "switch_elapsed_seconds": 0.012,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "llm-nemotron-super"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/llm-qwen327b",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "llm-wizardlm8x22b",
+      "switch_ok": false,
+      "switch_response": "error",
+      "switch_elapsed_seconds": 0.012,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "llm-nemotron-super"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/llm-wizardlm8x22b",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "translator-accurate",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.566,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "translator-accurate"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/translator-accurate",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "translator-fast",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.04,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "translator-fast"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/translator-fast",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "translator-medium",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.04,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "translator-medium"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/translator-medium",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "tts-coqui",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.04,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "tts-coqui"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/tts-coqui",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.0,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "tts-f5",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.016,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "tts-f5"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/tts-f5",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "tts-qwen3-clone",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.037,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "tts-qwen3-clone"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/tts-qwen3-clone",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "tts-qwen3-design",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.049,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "tts-qwen3-design"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/tts-qwen3-design",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "tts-qwen3-studio",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.033,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "tts-qwen3-studio"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/tts-qwen3-studio",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "video-animatediff",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.046,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "video-animatediff"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/video-animatediff",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "video-ltx",
+      "switch_ok": false,
+      "switch_response": "error",
+      "switch_elapsed_seconds": 0.012,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "video-animatediff"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/video-ltx",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.0,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    },
+    {
+      "service_name": "video-svd",
+      "switch_ok": true,
+      "switch_response": "ok",
+      "switch_elapsed_seconds": 0.028,
+      "status_snapshot": {
+        "healthy": true,
+        "last_activated": "video-svd"
+      },
+      "wait_seconds": 90,
+      "endpoint_url": "http://127.0.0.1:8080/video-svd",
+      "http_ok": false,
+      "http_status_code": null,
+      "http_response_snippet": "<urlopen error [Errno 111] Connection refused>",
+      "http_elapsed_seconds": 0.001,
+      "result": "failed",
+      "message": "switch or endpoint failed"
+    }
+  ],
+  "summary": {
+    "total": 24,
+    "passed": 0,
+    "failed": 24
+  }
+}
