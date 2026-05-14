@@ -1,0 +1,16 @@
+{
+  "collected_at": null,
+  "os": null,
+  "python": null,
+  "virtual_environment": null,
+  "gpu": {
+    "available": null,
+    "details": null
+  },
+  "frameworks": {
+    "pytorch": null,
+    "tensorflow": null,
+    "fastapi": null
+  },
+  "warnings": []
+}

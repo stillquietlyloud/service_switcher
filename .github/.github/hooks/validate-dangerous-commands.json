@@ -1,0 +1,19 @@
+{
+  "description": "Prevent destructive commands unless explicitly approved.",
+  "rules": [
+    {
+      "id": "block-rm-rf",
+      "match": "rm -rf",
+      "action": "require_approval",
+      "severity": "critical",
+      "message": "Destructive delete detected. Explicit approval required."
+    },
+    {
+      "id": "block-force-delete",
+      "match": "(drop database|delete from|truncate|format)",
+      "action": "require_approval",
+      "severity": "critical",
+      "message": "Potentially destructive data operation detected. Explicit approval required."
+    }
+  ]
+}

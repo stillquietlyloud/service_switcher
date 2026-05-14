@@ -122,3 +122,43 @@ Exit code:
 - `0` if all services pass
 - `1` if one or more services fail
 - `2` for config/argument errors
+
+## LAN Benchmark Harness (Python)
+
+For timing-focused validation from another host on the LAN, use
+`test/lan_service_benchmark.py` with `test/lan_benchmark_config.json`.
+
+What it measures:
+- optional Wake-on-LAN boot readiness timing for switcher ports
+- switch acknowledgement time (command socket round-trip)
+- warm-up time to first ready endpoint response
+- production request latencies (`p50`, `p95`, `p99`) and success rate
+- previous-service shutdown delay after switching to the next service
+
+Execution order:
+- controlled by `group_order` in config
+- default is AMD first, then NVIDIA
+
+Run:
+```bash
+python3 test/lan_service_benchmark.py \
+  --benchmark-config test/lan_benchmark_config.json \
+  --services-config services.json
+```
+
+Optional group filter (example):
+```bash
+python3 test/lan_service_benchmark.py \
+  --benchmark-config test/lan_benchmark_config.json \
+  --services-config services.json \
+  --groups amd nvidia
+```
+
+Outputs:
+- `benchmark_report_<timestamp>.json`
+- `benchmark_report_<timestamp>.txt`
+
+Notes:
+- update `service_tests` in benchmark config to match real production paths and payloads
+- update `expected_status_codes` and `response_must_contain` to enforce true readiness
+- set `wol.enabled=true` plus `target_mac` and `broadcast_ip` when testing wake-up behavior

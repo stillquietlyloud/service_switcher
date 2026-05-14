@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_ROOT}/../../../../" && pwd)"
+LEGACY_SCRIPT="${PROJECT_ROOT}/skills/logs_collect.sh"
+
+if [[ -f "${LEGACY_SCRIPT}" ]]; then
+  bash "${LEGACY_SCRIPT}"
+else
+  echo "logs_collect.sh not found at ${LEGACY_SCRIPT}" >&2
+  exit 1
+fi

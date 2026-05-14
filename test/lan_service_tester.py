@@ -4,7 +4,7 @@
 This script:
 1. Reads switcher command/status addresses from services.json.
 2. Sends "start <service>\n" to the switcher command port.
-3. Waits a fixed 90 seconds.
+3. Waits a fixed 60 seconds.
 4. Sends a POST request to each service endpoint (hardcoded below).
 5. Writes JSON and text reports next to this script.
 
@@ -21,8 +21,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 from urllib import error, request
-
-FIXED_WAIT_SECONDS = 90
+    
+FIXED_WAIT_SECONDS = 60
 SOCKET_TIMEOUT_SECONDS = 10
 HTTP_TIMEOUT_SECONDS = 30
 MAX_RESPONSE_SNIPPET = 800
@@ -30,30 +30,30 @@ MAX_RESPONSE_SNIPPET = 800
 # Hardcoded service tests. Keep this explicit and simple.
 # Update endpoint_url and payload values for your environment.
 SERVICE_TESTS: List[Dict[str, Any]] = [
-    {"service_name": "image-flux", "endpoint_url": "http://127.0.0.1:8080/image-flux", "payload": {"ping": "image-flux"}},
-    {"service_name": "image-qwen", "endpoint_url": "http://127.0.0.1:8080/image-qwen", "payload": {"ping": "image-qwen"}},
-    {"service_name": "image-sdxl", "endpoint_url": "http://127.0.0.1:8080/image-sdxl", "payload": {"ping": "image-sdxl"}},
-    {"service_name": "image-sdxl-turbo", "endpoint_url": "http://127.0.0.1:8080/image-sdxl-turbo", "payload": {"ping": "image-sdxl-turbo"}},
-    {"service_name": "llm-gpt120b", "endpoint_url": "http://127.0.0.1:8080/llm-gpt120b", "payload": {"ping": "llm-gpt120b"}},
-    {"service_name": "llm-gpt20b", "endpoint_url": "http://127.0.0.1:8080/llm-gpt20b", "payload": {"ping": "llm-gpt20b"}},
-    {"service_name": "llm-llama70b", "endpoint_url": "http://127.0.0.1:8080/llm-llama70b", "payload": {"ping": "llm-llama70b"}},
-    {"service_name": "llm-mixtral-llama70b", "endpoint_url": "http://127.0.0.1:8080/llm-mixtral-llama70b", "payload": {"ping": "llm-mixtral-llama70b"}},
-    {"service_name": "llm-mixtral8x22b", "endpoint_url": "http://127.0.0.1:8080/llm-mixtral8x22b", "payload": {"ping": "llm-mixtral8x22b"}},
-    {"service_name": "llm-nemotron-nano", "endpoint_url": "http://127.0.0.1:8080/llm-nemotron-nano", "payload": {"ping": "llm-nemotron-nano"}},
-    {"service_name": "llm-nemotron-super", "endpoint_url": "http://127.0.0.1:8080/llm-nemotron-super", "payload": {"ping": "llm-nemotron-super"}},
-    {"service_name": "llm-qwen327b", "endpoint_url": "http://127.0.0.1:8080/llm-qwen327b", "payload": {"ping": "llm-qwen327b"}},
-    {"service_name": "llm-wizardlm8x22b", "endpoint_url": "http://127.0.0.1:8080/llm-wizardlm8x22b", "payload": {"ping": "llm-wizardlm8x22b"}},
-    {"service_name": "translator-accurate", "endpoint_url": "http://127.0.0.1:8080/translator-accurate", "payload": {"ping": "translator-accurate"}},
-    {"service_name": "translator-fast", "endpoint_url": "http://127.0.0.1:8080/translator-fast", "payload": {"ping": "translator-fast"}},
-    {"service_name": "translator-medium", "endpoint_url": "http://127.0.0.1:8080/translator-medium", "payload": {"ping": "translator-medium"}},
-    {"service_name": "tts-coqui", "endpoint_url": "http://127.0.0.1:8080/tts-coqui", "payload": {"ping": "tts-coqui"}},
-    {"service_name": "tts-f5", "endpoint_url": "http://127.0.0.1:8080/tts-f5", "payload": {"ping": "tts-f5"}},
-    {"service_name": "tts-qwen3-clone", "endpoint_url": "http://127.0.0.1:8080/tts-qwen3-clone", "payload": {"ping": "tts-qwen3-clone"}},
-    {"service_name": "tts-qwen3-design", "endpoint_url": "http://127.0.0.1:8080/tts-qwen3-design", "payload": {"ping": "tts-qwen3-design"}},
-    {"service_name": "tts-qwen3-studio", "endpoint_url": "http://127.0.0.1:8080/tts-qwen3-studio", "payload": {"ping": "tts-qwen3-studio"}},
-    {"service_name": "video-animatediff", "endpoint_url": "http://127.0.0.1:8080/video-animatediff", "payload": {"ping": "video-animatediff"}},
-    {"service_name": "video-ltx", "endpoint_url": "http://127.0.0.1:8080/video-ltx", "payload": {"ping": "video-ltx"}},
-    {"service_name": "video-svd", "endpoint_url": "http://127.0.0.1:8080/video-svd", "payload": {"ping": "video-svd"}},
+    {"service_name": "image-flux", "endpoint_url": "http://192.168.8.5:30000/image-flux", "payload": {"ping": "image-flux"}},
+    {"service_name": "image-qwen", "endpoint_url": "http://192.168.8.5:30000/image-qwen", "payload": {"ping": "image-qwen"}},
+    {"service_name": "image-sdxl", "endpoint_url": "http://192.168.8.5:30000/image-sdxl", "payload": {"ping": "image-sdxl"}},
+    {"service_name": "image-sdxl-turbo", "endpoint_url": "http://192.168.8.5:30000/image-sdxl-turbo", "payload": {"ping": "image-sdxl-turbo"}},
+    {"service_name": "llm-gpt120b", "endpoint_url": "http://192.168.8.5:30000/llm-gpt120b", "payload": {"ping": "llm-gpt120b"}},
+    {"service_name": "llm-gpt20b", "endpoint_url": "http://192.168.8.5:30000/llm-gpt20b", "payload": {"ping": "llm-gpt20b"}},
+    {"service_name": "llm-llama70b", "endpoint_url": "http://192.168.8.5:30000/llm-llama70b", "payload": {"ping": "llm-llama70b"}},
+    {"service_name": "llm-mixtral-llama70b", "endpoint_url": "http://192.168.8.5:30000/llm-mixtral-llama70b", "payload": {"ping": "llm-mixtral-llama70b"}},
+    {"service_name": "llm-mixtral8x22b", "endpoint_url": "http://192.168.8.5:30000/llm-mixtral8x22b", "payload": {"ping": "llm-mixtral8x22b"}},
+    {"service_name": "llm-nemotron-nano", "endpoint_url": "http://192.168.8.5:30000/llm-nemotron-nano", "payload": {"ping": "llm-nemotron-nano"}},
+    {"service_name": "llm-nemotron-super", "endpoint_url": "http://192.168.8.5:30000/llm-nemotron-super", "payload": {"ping": "llm-nemotron-super"}},
+    {"service_name": "llm-qwen327b", "endpoint_url": "http://192.168.8.5:30000/llm-qwen327b", "payload": {"ping": "llm-qwen327b"}},
+    {"service_name": "llm-wizardlm8x22b", "endpoint_url": "http://192.168.8.5:30000/llm-wizardlm8x22b", "payload": {"ping": "llm-wizardlm8x22b"}},
+    {"service_name": "translator-accurate", "endpoint_url": "http://192.168.8.5:30000/translator-accurate", "payload": {"ping": "translator-accurate"}},
+    {"service_name": "translator-fast", "endpoint_url": "http://192.168.8.5:30000/translator-fast", "payload": {"ping": "translator-fast"}},
+    {"service_name": "translator-medium", "endpoint_url": "http://192.168.8.5:30000/translator-medium", "payload": {"ping": "translator-medium"}},
+    {"service_name": "tts-coqui", "endpoint_url": "http://192.168.8.5:30000/tts-coqui", "payload": {"ping": "tts-coqui"}},
+    {"service_name": "tts-f5", "endpoint_url": "http://192.168.8.5:30000/tts-f5", "payload": {"ping": "tts-f5"}},
+    {"service_name": "tts-qwen3-clone", "endpoint_url": "http://192.168.8.5:30000/tts-qwen3-clone", "payload": {"ping": "tts-qwen3-clone"}},
+    {"service_name": "tts-qwen3-design", "endpoint_url": "http://192.168.8.5:30000/tts-qwen3-design", "payload": {"ping": "tts-qwen3-design"}},
+    {"service_name": "tts-qwen3-studio", "endpoint_url": "http://192.168.8.5:30000/tts-qwen3-studio", "payload": {"ping": "tts-qwen3-studio"}},
+    {"service_name": "video-animatediff", "endpoint_url": "http://192.168.8.5:30000/video-animatediff", "payload": {"ping": "video-animatediff"}},
+    {"service_name": "video-ltx", "endpoint_url": "http://192.168.8.5:30000/video-ltx", "payload": {"ping": "video-ltx"}},
+    {"service_name": "video-svd", "endpoint_url": "http://192.168.8.5:30000/video-svd", "payload": {"ping": "video-svd"}},
 ]
 
 

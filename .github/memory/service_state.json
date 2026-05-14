@@ -1,0 +1,15 @@
+{
+  "captured_at": null,
+  "services": [],
+  "endpoints": [],
+  "latency": {
+    "p50_ms": null,
+    "p95_ms": null
+  },
+  "resources": {
+    "cpu": null,
+    "memory": null,
+    "gpu": null
+  },
+  "alerts": []
+}

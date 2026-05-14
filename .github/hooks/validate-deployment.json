@@ -1,0 +1,19 @@
+{
+  "description": "Gate risky deployment operations with explicit user approval.",
+  "rules": [
+    {
+      "id": "require-approval-for-deploy",
+      "match": "(deploy|rollout|restart-all|scale|kubectl apply|helm upgrade)",
+      "action": "require_approval",
+      "severity": "high",
+      "message": "Deployment-affecting command detected. Confirm approval before execution."
+    },
+    {
+      "id": "prefer-dry-run",
+      "match": "(kubectl apply|helm upgrade|terraform apply)",
+      "action": "warn_if_no_dry_run",
+      "severity": "medium",
+      "message": "Run a dry-run/plan command before applying changes."
+    }
+  ]
+}

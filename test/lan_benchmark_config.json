@@ -1,0 +1,47 @@
+{
+  "group_order": ["amd", "nvidia"],
+  "poll_interval_seconds": 2,
+  "timeouts": {
+    "socket_seconds": 10,
+    "http_seconds": 120,
+    "readiness_seconds": 900,
+    "shutdown_seconds": 300
+  },
+  "wol": {
+    "enabled": false,
+    "target_mac": "00:11:22:33:44:55",
+    "broadcast_ip": "192.168.8.255",
+    "port": 9,
+    "wait_timeout_seconds": 600
+  },
+  "production": {
+    "requests": 20,
+    "interval_seconds": 1.0
+  },
+  "service_tests": [
+    {"service_name": "image-flux", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/image-flux", "method": "POST", "payload": {"ping": "image-flux"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "image-qwen", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/image-qwen", "method": "POST", "payload": {"ping": "image-qwen"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "image-sdxl", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/image-sdxl", "method": "POST", "payload": {"ping": "image-sdxl"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "image-sdxl-turbo", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/image-sdxl-turbo", "method": "POST", "payload": {"ping": "image-sdxl-turbo"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "llm-gpt120b", "group": "nvidia", "endpoint_url": "http://192.168.8.5:30000/llm-gpt120b", "method": "POST", "payload": {"ping": "llm-gpt120b"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "llm-gpt20b", "group": "nvidia", "endpoint_url": "http://192.168.8.5:30000/llm-gpt20b", "method": "POST", "payload": {"ping": "llm-gpt20b"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "llm-llama70b", "group": "nvidia", "endpoint_url": "http://192.168.8.5:30000/llm-llama70b", "method": "POST", "payload": {"ping": "llm-llama70b"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "llm-mixtral-llama70b", "group": "nvidia", "endpoint_url": "http://192.168.8.5:30000/llm-mixtral-llama70b", "method": "POST", "payload": {"ping": "llm-mixtral-llama70b"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "llm-mixtral8x22b", "group": "nvidia", "endpoint_url": "http://192.168.8.5:30000/llm-mixtral8x22b", "method": "POST", "payload": {"ping": "llm-mixtral8x22b"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "llm-nemotron-nano", "group": "nvidia", "endpoint_url": "http://192.168.8.5:30000/llm-nemotron-nano", "method": "POST", "payload": {"ping": "llm-nemotron-nano"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "llm-nemotron-super", "group": "nvidia", "endpoint_url": "http://192.168.8.5:30000/llm-nemotron-super", "method": "POST", "payload": {"ping": "llm-nemotron-super"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "llm-qwen327b", "group": "nvidia", "endpoint_url": "http://192.168.8.5:30000/llm-qwen327b", "method": "POST", "payload": {"ping": "llm-qwen327b"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "llm-wizardlm8x22b", "group": "nvidia", "endpoint_url": "http://192.168.8.5:30000/llm-wizardlm8x22b", "method": "POST", "payload": {"ping": "llm-wizardlm8x22b"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "translator-accurate", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/translator-accurate", "method": "POST", "payload": {"ping": "translator-accurate"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "translator-fast", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/translator-fast", "method": "POST", "payload": {"ping": "translator-fast"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "translator-medium", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/translator-medium", "method": "POST", "payload": {"ping": "translator-medium"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "tts-coqui", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/tts-coqui", "method": "POST", "payload": {"ping": "tts-coqui"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "tts-f5", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/tts-f5", "method": "POST", "payload": {"ping": "tts-f5"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "tts-qwen3-clone", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/tts-qwen3-clone", "method": "POST", "payload": {"ping": "tts-qwen3-clone"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "tts-qwen3-design", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/tts-qwen3-design", "method": "POST", "payload": {"ping": "tts-qwen3-design"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "tts-qwen3-studio", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/tts-qwen3-studio", "method": "POST", "payload": {"ping": "tts-qwen3-studio"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "video-animatediff", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/video-animatediff", "method": "POST", "payload": {"ping": "video-animatediff"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "video-ltx", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/video-ltx", "method": "POST", "payload": {"ping": "video-ltx"}, "expected_status_codes": [200], "response_must_contain": ""},
+    {"service_name": "video-svd", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/video-svd", "method": "POST", "payload": {"ping": "video-svd"}, "expected_status_codes": [200], "response_must_contain": ""}
+  ]
+}
