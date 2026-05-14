@@ -18,8 +18,12 @@ Detect dependency conflicts and missing packages before implementation or remedi
 2. Capture installed packages with `pip freeze` in the active environment.
 3. Compare framework compatibility ranges using internal references.
 4. Mark findings as green/yellow/red based on operational risk.
+5. Update `.github/memory/sitrep.md` with dependency findings.
+6. Append executed checks and evidence to `.github/memory/execution_log.md`.
+7. Update point statuses in `.github/memory/action_tracker.md`.
 
 ## Outputs
 - Compatibility matrix by framework.
 - Missing or conflicting package report.
 - Safe upgrade/downgrade recommendations with validation steps.
+- Updated SITREP, execution log, and action tracker entries.

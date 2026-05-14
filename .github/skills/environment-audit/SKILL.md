@@ -19,9 +19,12 @@ Create a reliable baseline of runtime capabilities before development or trouble
    - `.github/skills/environment-audit/scripts/run_collect_env.sh`
    - `.github/skills/environment-audit/scripts/run_gpu_probe.sh`
 3. Normalize key details into structured JSON.
-4. Save summary findings in `.github/memory/sitrep.md`.
+4. Update `.github/memory/sitrep.md` with current environment findings.
+5. Append run evidence and commands to `.github/memory/execution_log.md`.
+6. Update point statuses in `.github/memory/action_tracker.md`.
 
 ## Outputs
 - Environment snapshot with Python/runtime/GPU state.
 - Readiness flags and warnings.
 - Suggested next skill (usually dependency-check or service-health).
+- Updated SITREP, execution log, and action tracker entries.

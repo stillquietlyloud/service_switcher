@@ -41,9 +41,27 @@ Help users build and operate AI services safely and quickly.
 5. Research Solutions
 6. Implementation Guide
 
+## Persistent Reporting (Mandatory)
+At the end of every execution, update project memory files so progress is always traceable.
+
+Required files:
+- `.github/memory/sitrep.md`: current status snapshot and latest run summary.
+- `.github/memory/execution_log.md`: append-only per-run record.
+- `.github/memory/action_tracker.md`: point-by-point status tracking for findings, remediation items, and approvals.
+
+If a required file is missing, create it from `.github/templates/` first, then update it.
+
+Minimum end-of-run updates:
+1. Set run metadata (date, trigger, scope, owner/agent).
+2. Record what was executed (commands, files changed, checks run).
+3. Record outcomes for each point with status: `todo`, `in_progress`, `blocked`, `done`.
+4. Link evidence (logs, command output summary, file paths).
+5. Record next actions, risk, and approval state when needed.
+
 ## Output Contract
 For each task, return:
 1. Findings summary
 2. Evidence and commands run
 3. Proposed actions with risk levels
 4. Approval request when required
+5. Documentation update summary (what changed in SITREP/log/tracker)

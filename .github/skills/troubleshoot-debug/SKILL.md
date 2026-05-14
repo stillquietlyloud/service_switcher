@@ -19,8 +19,12 @@ Perform focused root-cause analysis and produce safe, testable remediation optio
 3. Correlate errors with recent config/dependency changes.
 4. Produce likely causes ranked by confidence.
 5. Propose fixes and explicit verification commands.
+6. Update `.github/memory/sitrep.md` with root-cause and remediation status.
+7. Append diagnostics commands and evidence to `.github/memory/execution_log.md`.
+8. Update point statuses in `.github/memory/action_tracker.md`.
 
 ## Outputs
 - Root-cause hypothesis list with confidence labels.
 - Minimal remediation set.
 - Validation sequence and rollback notes.
+- Updated SITREP, execution log, and action tracker entries.

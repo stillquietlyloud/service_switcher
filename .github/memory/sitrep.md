@@ -1,19 +1,37 @@
 # SITREP
 
-## Last Update
+## Run Metadata
 - Date: not set
 - Trigger: not set
+- Agent: AI Service Workload Agent
+- Services in scope: not set
+- Environment: not set
 
-## Current State
+## Work Performed
+- Skills used: not set
+- Commands/checks executed: not set
+- Files changed: none
+
+## Findings
 - Environment: unknown
 - Dependencies: unknown
-- Service health: unknown
-- Active incident: none
+- Health: unknown
+- Logs and diagnostics: unknown
 
-## Recent Findings
-- none
+## Point Status
+| Point ID | Description | Status (todo/in_progress/blocked/done) | Risk (low/medium/high) | Evidence |
+|---|---|---|---|---|
+| P-001 | Run environment-audit | todo | low | pending |
+| P-002 | Run dependency-check | todo | low | pending |
+| P-003 | Run service-health | todo | low | pending |
 
-## Open Actions
-- Run environment-audit
-- Run dependency-check
-- Run service-health
+## Remediation and Decisions
+- Immediate actions: not set
+- Validation steps: not set
+- Rollback notes: not set
+- Approval required (yes/no): no
+- Approved by: n/a
+
+## Status
+- Current state: pending baseline checks
+- Next action: execute P-001
