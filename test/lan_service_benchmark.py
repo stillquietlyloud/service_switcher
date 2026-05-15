@@ -14,8 +14,10 @@ Execution order is group-based and defaults to AMD first, then NVIDIA.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import math
+import re
 import socket
 import statistics
 import time
@@ -24,6 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 from urllib import error, request
+from urllib.parse import urlparse
 
 DEFAULT_SOCKET_TIMEOUT_SECONDS = 10.0
 DEFAULT_HTTP_TIMEOUT_SECONDS = 120.0
@@ -33,7 +36,27 @@ DEFAULT_POLL_INTERVAL_SECONDS = 2.0
 DEFAULT_PRODUCTION_REQUESTS = 20
 DEFAULT_PRODUCTION_INTERVAL_SECONDS = 1.0
 MAX_RESPONSE_SNIPPET = 1200
+DEFAULT_MAX_RESPONSE_BYTES = 25 * 1024 * 1024
+DEFAULT_MAX_LINK_DOWNLOAD_BYTES = 25 * 1024 * 1024
 DEFAULT_GROUP_ORDER = ["amd", "nvidia"]
+TEXTUAL_CONTENT_TYPES = (
+    "application/json",
+    "text/plain",
+    "text/html",
+    "text/markdown",
+    "application/xml",
+    "text/xml",
+)
+MEDIA_CONTENT_TYPE_PREFIXES = ("image/", "audio/", "video/")
+
+
+@dataclass(frozen=True)
+class SampleOptions:
+    max_response_bytes: int
+    max_link_download_bytes: int
+    download_linked_assets: bool
+    save_all_production_samples: bool
+    save_response_bodies: bool
 
 
 @dataclass(frozen=True)
@@ -53,6 +76,227 @@ class Timeouts:
     http_seconds: float
     readiness_seconds: float
     shutdown_seconds: float
+
+
+def slugify(value: str) -> str:
+    compact = re.sub(r"[^a-zA-Z0-9._-]+", "-", value.strip().lower())
+    return compact.strip("-.") or "sample"
+
+
+def extension_for_content_type(content_type: str, fallback_text: bool) -> str:
+    text = content_type.lower()
+    if "json" in text:
+        return ".json"
+    if text.startswith("text/"):
+        return ".txt"
+    if text.startswith("image/"):
+        subtype = text.split("/", 1)[1].split(";", 1)[0].strip()
+        if subtype in {"jpeg", "jpg"}:
+            return ".jpg"
+        return f".{subtype}" if subtype else ".img"
+    if text.startswith("audio/"):
+        subtype = text.split("/", 1)[1].split(";", 1)[0].strip()
+        return f".{subtype}" if subtype else ".audio"
+    if text.startswith("video/"):
+        subtype = text.split("/", 1)[1].split(";", 1)[0].strip()
+        return f".{subtype}" if subtype else ".video"
+    return ".txt" if fallback_text else ".bin"
+
+
+def is_utf8_text(data: bytes) -> bool:
+    try:
+        data.decode("utf-8")
+    except UnicodeDecodeError:
+        return False
+    return True
+
+
+def save_artifact_file(
+    script_dir: Path,
+    service_name: str,
+    phase: str,
+    index: int,
+    suffix: str,
+    extension: str,
+    payload: bytes,
+) -> Path:
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%SZ")
+    safe_service = slugify(service_name)
+    safe_phase = slugify(phase)
+    safe_suffix = slugify(suffix)
+    filename = f"sample_{stamp}_{safe_service}_{safe_phase}_{index:03d}_{safe_suffix}{extension}"
+    path = script_dir / filename
+    path.write_bytes(payload)
+    return path
+
+
+def deep_collect_strings(value: Any) -> List[str]:
+    strings: List[str] = []
+    if isinstance(value, str):
+        strings.append(value)
+    elif isinstance(value, list):
+        for item in value:
+            strings.extend(deep_collect_strings(item))
+    elif isinstance(value, dict):
+        for nested in value.values():
+            strings.extend(deep_collect_strings(nested))
+    return strings
+
+
+def extract_data_uri_payload(text: str) -> Optional[Tuple[str, bytes]]:
+    if not text.startswith("data:") or ";base64," not in text:
+        return None
+    prefix, payload = text.split(",", 1)
+    meta = prefix[5:]
+    mime = meta.split(";", 1)[0] if meta else "application/octet-stream"
+    try:
+        decoded = base64.b64decode(payload, validate=True)
+    except Exception:  # noqa: BLE001
+        return None
+    return mime, decoded
+
+
+def download_asset_url(url: str, timeout_seconds: float, max_bytes: int) -> Tuple[Optional[bytes], str, str]:
+    req = request.Request(url=url, method="GET", headers={"Accept": "*/*"})
+    with request.urlopen(req, timeout=timeout_seconds) as resp:
+        content_type = str(resp.headers.get("Content-Type", "application/octet-stream"))
+        final_url = str(getattr(resp, "url", url))
+        data = resp.read(max_bytes)
+    return data, content_type, final_url
+
+
+def write_response_samples(
+    *,
+    script_dir: Path,
+    service_name: str,
+    phase: str,
+    response: Dict[str, Any],
+    sample_options: SampleOptions,
+    timeouts: Timeouts,
+) -> List[Dict[str, Any]]:
+    artifacts: List[Dict[str, Any]] = []
+    if not sample_options.save_response_bodies:
+        return artifacts
+
+    payload: bytes = response.get("response_bytes", b"")
+    content_type = str(response.get("content_type", "application/octet-stream"))
+    if payload:
+        textish = content_type.startswith(TEXTUAL_CONTENT_TYPES) or is_utf8_text(payload)
+        ext = extension_for_content_type(content_type, textish)
+        artifact_path = save_artifact_file(
+            script_dir=script_dir,
+            service_name=service_name,
+            phase=phase,
+            index=1,
+            suffix="response",
+            extension=ext,
+            payload=payload,
+        )
+        artifacts.append(
+            {
+                "type": "response_body",
+                "content_type": content_type,
+                "path": str(artifact_path),
+                "size_bytes": len(payload),
+            }
+        )
+
+    extracted_count = 0
+    parsed_json: Optional[Any] = None
+    if payload:
+        decoded = payload.decode("utf-8", errors="replace")
+        if "json" in content_type.lower() or decoded.strip().startswith(("{", "[")):
+            try:
+                parsed_json = json.loads(decoded)
+            except json.JSONDecodeError:
+                parsed_json = None
+
+    candidate_strings: List[str] = []
+    if parsed_json is not None:
+        candidate_strings = deep_collect_strings(parsed_json)
+
+    if not candidate_strings and payload and is_utf8_text(payload):
+        candidate_strings = [payload.decode("utf-8", errors="replace")]
+
+    for candidate in candidate_strings:
+        data_uri = extract_data_uri_payload(candidate)
+        if data_uri is not None:
+            mime, data = data_uri
+            extracted_count += 1
+            ext = extension_for_content_type(mime, fallback_text=False)
+            artifact_path = save_artifact_file(
+                script_dir=script_dir,
+                service_name=service_name,
+                phase=phase,
+                index=100 + extracted_count,
+                suffix="embedded",
+                extension=ext,
+                payload=data,
+            )
+            artifacts.append(
+                {
+                    "type": "embedded_data_uri",
+                    "content_type": mime,
+                    "path": str(artifact_path),
+                    "size_bytes": len(data),
+                }
+            )
+            continue
+
+        if sample_options.download_linked_assets and candidate.startswith(("http://", "https://")):
+            try:
+                data, linked_type, final_url = download_asset_url(
+                    url=candidate,
+                    timeout_seconds=timeouts.http_seconds,
+                    max_bytes=sample_options.max_link_download_bytes,
+                )
+                if data:
+                    extracted_count += 1
+                    ext = extension_for_content_type(linked_type, fallback_text=is_utf8_text(data))
+                    parsed = urlparse(final_url)
+                    tail = Path(parsed.path).name or "linked"
+                    artifact_path = save_artifact_file(
+                        script_dir=script_dir,
+                        service_name=service_name,
+                        phase=phase,
+                        index=200 + extracted_count,
+                        suffix=f"linked-{tail}",
+                        extension=ext,
+                        payload=data,
+                    )
+                    artifacts.append(
+                        {
+                            "type": "linked_asset",
+                            "source_url": final_url,
+                            "content_type": linked_type,
+                            "path": str(artifact_path),
+                            "size_bytes": len(data),
+                        }
+                    )
+            except Exception as exc:  # noqa: BLE001
+                artifacts.append(
+                    {
+                        "type": "linked_asset_error",
+                        "source_url": candidate,
+                        "error": str(exc),
+                    }
+                )
+
+    return artifacts
+
+
+def compact_http_response(response: Dict[str, Any]) -> Dict[str, Any]:
+    payload = response.get("response_bytes", b"")
+    byte_len = len(payload) if isinstance(payload, (bytes, bytearray)) else 0
+    return {
+        "transport_ok": bool(response.get("transport_ok", False)),
+        "status_code": response.get("status_code"),
+        "response_snippet": str(response.get("response_snippet", ""))[:MAX_RESPONSE_SNIPPET],
+        "elapsed_seconds": response.get("elapsed_seconds"),
+        "content_type": response.get("content_type"),
+        "final_url": response.get("final_url"),
+        "response_bytes_len": byte_len,
+    }
 
 
 def parse_address(address: str) -> Tuple[str, int]:
@@ -232,6 +476,7 @@ def http_request(
     method: str,
     payload: Dict[str, Any],
     timeout_seconds: float,
+    max_bytes: int,
 ) -> Dict[str, Any]:
     body: Optional[bytes] = None
     headers = {"Accept": "application/json, text/plain, */*"}
@@ -245,15 +490,20 @@ def http_request(
     started_at = time.perf_counter()
     try:
         with request.urlopen(req, timeout=timeout_seconds) as resp:
-            resp_body = resp.read(MAX_RESPONSE_SNIPPET)
+            resp_body = resp.read(max_bytes)
             status_code = getattr(resp, "status", 200)
             snippet = resp_body.decode("utf-8", errors="replace")
             ok_transport = True
+            content_type = str(resp.headers.get("Content-Type", "application/octet-stream"))
+            final_url = str(getattr(resp, "url", url))
     except error.HTTPError as exc:
-        body_bytes = exc.read(MAX_RESPONSE_SNIPPET)
+        body_bytes = exc.read(max_bytes)
         status_code = exc.code
         snippet = body_bytes.decode("utf-8", errors="replace")
         ok_transport = True
+        resp_body = body_bytes
+        content_type = str(exc.headers.get("Content-Type", "application/octet-stream")) if exc.headers else "application/octet-stream"
+        final_url = str(getattr(exc, "url", url))
     except Exception as exc:  # noqa: BLE001
         elapsed = time.perf_counter() - started_at
         return {
@@ -261,14 +511,20 @@ def http_request(
             "status_code": None,
             "response_snippet": str(exc),
             "elapsed_seconds": round(elapsed, 3),
+            "response_bytes": b"",
+            "content_type": "application/octet-stream",
+            "final_url": url,
         }
 
     elapsed = time.perf_counter() - started_at
     return {
         "transport_ok": ok_transport,
         "status_code": status_code,
-        "response_snippet": snippet,
+        "response_snippet": snippet[:MAX_RESPONSE_SNIPPET],
         "elapsed_seconds": round(elapsed, 3),
+        "response_bytes": resp_body,
+        "content_type": content_type,
+        "final_url": final_url,
     }
 
 
@@ -303,6 +559,8 @@ def quantile_nearest_rank(values: List[float], q: float) -> float:
 def run_production_benchmark(
     case: ServiceCase,
     timeouts: Timeouts,
+    sample_options: SampleOptions,
+    script_dir: Path,
     requests_count: int,
     interval_seconds: float,
 ) -> Dict[str, Any]:
@@ -310,6 +568,7 @@ def run_production_benchmark(
     successes = 0
     failures = 0
     last_error = ""
+    request_artifacts: List[Dict[str, Any]] = []
 
     for index in range(requests_count):
         response = http_request(
@@ -317,7 +576,19 @@ def run_production_benchmark(
             method=case.method,
             payload=case.payload,
             timeout_seconds=timeouts.http_seconds,
+            max_bytes=sample_options.max_response_bytes,
         )
+
+        if sample_options.save_all_production_samples:
+            artifacts = write_response_samples(
+                script_dir=script_dir,
+                service_name=case.service_name,
+                phase=f"production-{index + 1:03d}",
+                response=response,
+                sample_options=sample_options,
+                timeouts=timeouts,
+            )
+            request_artifacts.append({"request_index": index + 1, "artifacts": artifacts})
 
         latency = float(response["elapsed_seconds"])
         latencies.append(latency)
@@ -349,6 +620,7 @@ def run_production_benchmark(
             "p99": round(p99, 3) if not math.isnan(p99) else None,
         },
         "last_error_snippet": last_error,
+        "request_artifacts": request_artifacts,
     }
 
 
@@ -357,6 +629,8 @@ def monitor_transition(
     current_case: ServiceCase,
     switch_started_perf: float,
     timeouts: Timeouts,
+    sample_options: SampleOptions,
+    script_dir: Path,
     poll_interval_seconds: float,
 ) -> Dict[str, Any]:
     started = time.perf_counter()
@@ -376,6 +650,7 @@ def monitor_transition(
                 method=current_case.method,
                 payload=current_case.payload,
                 timeout_seconds=timeouts.http_seconds,
+                max_bytes=sample_options.max_response_bytes,
             )
             if is_ready(current_case, ready_probe):
                 ready_elapsed = time.perf_counter() - switch_started_perf
@@ -386,6 +661,7 @@ def monitor_transition(
                 method=previous_case.method,
                 payload=previous_case.payload,
                 timeout_seconds=timeouts.http_seconds,
+                max_bytes=sample_options.max_response_bytes,
             )
             prev_still_ready = is_ready(previous_case, prev_probe)
             current_ready = ready_elapsed is not None
@@ -414,11 +690,33 @@ def monitor_transition(
 
         time.sleep(poll_interval_seconds)
 
+    ready_artifacts = write_response_samples(
+        script_dir=script_dir,
+        service_name=current_case.service_name,
+        phase="warmup",
+        response=ready_probe,
+        sample_options=sample_options,
+        timeouts=timeouts,
+    )
+
+    previous_artifacts: List[Dict[str, Any]] = []
+    if previous_case is not None:
+        previous_artifacts = write_response_samples(
+            script_dir=script_dir,
+            service_name=previous_case.service_name,
+            phase=f"shutdown-after-switch-to-{current_case.service_name}",
+            response=prev_probe,
+            sample_options=sample_options,
+            timeouts=timeouts,
+        )
+
     return {
         "warmup_seconds": round(ready_elapsed, 3) if ready_elapsed is not None else None,
         "shutdown_delay_seconds": round(shutdown_elapsed, 3) if shutdown_elapsed is not None else None,
         "current_ready_probe": ready_probe,
         "previous_probe": prev_probe,
+        "current_ready_artifacts": ready_artifacts,
+        "previous_probe_artifacts": previous_artifacts,
         "overlap_seen": overlap_seen,
     }
 
@@ -468,6 +766,51 @@ def wait_for_switcher_after_wol(
     }
 
 
+def endpoint_port_summary(cases: Dict[str, ServiceCase]) -> Dict[str, Any]:
+    by_port: Dict[str, List[str]] = {}
+    parse_errors: List[str] = []
+    for service_name, case in sorted(cases.items()):
+        try:
+            parsed = urlparse(case.endpoint_url)
+            if not parsed.scheme or not parsed.hostname or parsed.port is None:
+                raise ValueError("missing hostname or port")
+            key = f"{parsed.hostname}:{parsed.port}"
+            by_port.setdefault(key, []).append(service_name)
+        except Exception as exc:  # noqa: BLE001
+            parse_errors.append(f"{service_name}: {exc}")
+
+    return {
+        "port_groups": [{"endpoint": key, "services": names} for key, names in sorted(by_port.items())],
+        "parse_errors": parse_errors,
+    }
+
+
+def build_call_examples(
+    *,
+    command_host: str,
+    command_port: int,
+    cases: Dict[str, ServiceCase],
+) -> Dict[str, Dict[str, str]]:
+    examples: Dict[str, Dict[str, str]] = {}
+    for service_name, case in sorted(cases.items()):
+        switch_cmd = f"echo 'start {service_name}' | nc {command_host} {command_port}"
+        if case.method == "POST":
+            payload = json.dumps(case.payload)
+            endpoint_cmd = (
+                "curl -sS -X POST "
+                f"-H 'Content-Type: application/json' --data '{payload}' '{case.endpoint_url}'"
+            )
+        else:
+            endpoint_cmd = f"curl -sS -X GET '{case.endpoint_url}'"
+
+        examples[service_name] = {
+            "switch_command": switch_cmd,
+            "endpoint_command": endpoint_cmd,
+        }
+
+    return examples
+
+
 def write_reports(script_dir: Path, report: Dict[str, Any]) -> Tuple[Path, Path]:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%SZ")
     json_path = script_dir / f"benchmark_report_{stamp}.json"
@@ -483,6 +826,16 @@ def write_reports(script_dir: Path, report: Dict[str, Any]) -> Tuple[Path, Path]
     lines.append(f"status_address: {report['status_address']}")
     lines.append(f"group_order: {', '.join(report['group_order'])}")
     lines.append("")
+
+    port_review = report.get("port_review", {})
+    if port_review:
+        lines.append("port_review:")
+        for group in port_review.get("port_groups", []):
+            services_line = ", ".join(group.get("services", []))
+            lines.append(f"  {group.get('endpoint')}: {services_line}")
+        for parse_error in port_review.get("parse_errors", []):
+            lines.append(f"  parse_error: {parse_error}")
+        lines.append("")
 
     wol = report.get("wol", {})
     if wol:
@@ -511,6 +864,12 @@ def write_reports(script_dir: Path, report: Dict[str, Any]) -> Tuple[Path, Path]
             f"warmup_seconds={result['warmup_seconds']} shutdown_delay_seconds={result['shutdown_delay_seconds']} "
             f"overlap_seen={result['overlap_seen']}"
         )
+        lines.append(
+            "samples: "
+            f"warmup={len(result.get('warmup_artifacts', []))} "
+            f"shutdown={len(result.get('shutdown_probe_artifacts', []))} "
+            f"production={result['production'].get('saved_artifact_count', 0)}"
+        )
         prod = result["production"]
         lat = prod["latency_seconds"]
         lines.append(
@@ -519,6 +878,13 @@ def write_reports(script_dir: Path, report: Dict[str, Any]) -> Tuple[Path, Path]
             f"p50={lat['p50']}s p95={lat['p95']}s p99={lat['p99']}s"
         )
         lines.append(f"result={result['result']} message={result['message']}")
+        call_examples = result.get("call_examples", {})
+        if call_examples:
+            lines.append(f"switch_call={call_examples.get('switch_command', '')}")
+            lines.append(f"endpoint_call={call_examples.get('endpoint_command', '')}")
+        for artifact in result.get("all_artifacts", []):
+            if "path" in artifact:
+                lines.append(f"artifact={artifact['path']}")
         lines.append("")
 
     txt_path.write_text("\n".join(lines), encoding="utf-8")
@@ -582,6 +948,16 @@ def main() -> int:
     production_interval_seconds = float(
         production_cfg.get("interval_seconds", DEFAULT_PRODUCTION_INTERVAL_SECONDS)
     )
+    samples_cfg = benchmark_config.get("samples", {})
+    sample_options = SampleOptions(
+        max_response_bytes=int(samples_cfg.get("max_response_bytes", DEFAULT_MAX_RESPONSE_BYTES)),
+        max_link_download_bytes=int(
+            samples_cfg.get("max_link_download_bytes", DEFAULT_MAX_LINK_DOWNLOAD_BYTES)
+        ),
+        download_linked_assets=bool(samples_cfg.get("download_linked_assets", True)),
+        save_all_production_samples=bool(samples_cfg.get("save_all_production_samples", True)),
+        save_response_bodies=bool(samples_cfg.get("save_response_bodies", True)),
+    )
 
     group_order = [
         str(group).strip().lower() for group in benchmark_config.get("group_order", DEFAULT_GROUP_ORDER)
@@ -601,6 +977,12 @@ def main() -> int:
         print(f"ERROR: unable to order services: {exc}")
         return 2
 
+    command_examples = build_call_examples(
+        command_host=command_host,
+        command_port=command_port,
+        cases=cases,
+    )
+
     report: Dict[str, Any] = {
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "benchmark_config_path": str(benchmark_config_path),
@@ -608,6 +990,13 @@ def main() -> int:
         "command_address": switcher_config["command_listen_address"],
         "status_address": switcher_config["status_listen_address"],
         "group_order": selected_groups or group_order,
+        "port_review": endpoint_port_summary(cases),
+        "service_name_review": {
+            "configured_service_count": len(configured_services),
+            "case_service_count": len(cases),
+            "missing_in_cases": sorted(set(configured_services) - set(cases.keys())),
+            "extra_in_cases": sorted(set(cases.keys()) - set(configured_services)),
+        },
         "wol": {},
         "results": [],
         "summary": {
@@ -616,6 +1005,7 @@ def main() -> int:
             "failed": 0,
             "avg_warmup_seconds": None,
             "avg_switch_seconds": None,
+            "artifact_files_saved": 0,
         },
     }
 
@@ -685,6 +1075,8 @@ def main() -> int:
             current_case=case,
             switch_started_perf=switch_started_perf,
             timeouts=timeouts,
+            sample_options=sample_options,
+            script_dir=script_dir,
             poll_interval_seconds=poll_interval_seconds,
         )
 
@@ -694,6 +1086,8 @@ def main() -> int:
             production = run_production_benchmark(
                 case=case,
                 timeouts=timeouts,
+                sample_options=sample_options,
+                script_dir=script_dir,
                 requests_count=production_requests,
                 interval_seconds=production_interval_seconds,
             )
@@ -712,7 +1106,19 @@ def main() -> int:
                     "p99": None,
                 },
                 "last_error_snippet": "warmup did not reach ready criteria",
+                "request_artifacts": [],
             }
+
+        production_artifacts: List[Dict[str, Any]] = []
+        for item in production.get("request_artifacts", []):
+            production_artifacts.extend(item.get("artifacts", []))
+        production["saved_artifact_count"] = len([a for a in production_artifacts if "path" in a])
+
+        all_artifacts: List[Dict[str, Any]] = []
+        all_artifacts.extend(transition.get("current_ready_artifacts", []))
+        all_artifacts.extend(transition.get("previous_probe_artifacts", []))
+        all_artifacts.extend(production_artifacts)
+        report["summary"]["artifact_files_saved"] += len([a for a in all_artifacts if "path" in a])
 
         passed = bool(
             switch_outcome["ok"]
@@ -735,10 +1141,14 @@ def main() -> int:
             "warmup_seconds": transition["warmup_seconds"],
             "shutdown_delay_seconds": transition["shutdown_delay_seconds"],
             "overlap_seen": transition["overlap_seen"],
-            "ready_probe": transition["current_ready_probe"],
-            "previous_probe": transition["previous_probe"],
+            "ready_probe": compact_http_response(transition["current_ready_probe"]),
+            "previous_probe": compact_http_response(transition["previous_probe"]),
+            "warmup_artifacts": transition.get("current_ready_artifacts", []),
+            "shutdown_probe_artifacts": transition.get("previous_probe_artifacts", []),
             "endpoint_url": case.endpoint_url,
+            "call_examples": command_examples.get(service_name, {}),
             "production": production,
+            "all_artifacts": all_artifacts,
             "result": "passed" if passed else "failed",
             "message": message,
         }

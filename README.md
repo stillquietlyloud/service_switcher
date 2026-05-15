@@ -4,16 +4,25 @@ A small Linux service switcher for systemd-based hosts.
 
 ## What it does
 
-- listens for plain text commands on a TCP port (default `0.0.0.0:20100`)
-- accepts `start <name>`
-- looks up `<name>` in `services.json`
-- starts the mapped systemd service with `systemctl start`
-- exposes a second TCP port for basic health/status (default `0.0.0.0:30100`)
+* Listens for plain text commands on a TCP port (default `0.0.0.0:20100`)
+* Accepts `start <name>`
+* Looks up `<name>` in `services.json`
+* Starts the mapped systemd service with `systemctl start`
+* Exposes a second TCP port for health/status (default `0.0.0.0:30100`)
 
-The status port returns JSON with:
+**Task-aware switching (v2):**
 
-- `healthy`
-- `last_activated`
+- Only one service switch (task) is allowed at a time. If a switch is in progress, new requests are queued and processed after the current task completes.
+- The status port returns JSON with:
+  - `healthy`
+  - `last_activated`
+  - `active_task` (true if a switch is running)
+  - `task_started_at` (when the current switch began)
+  - `task_done_at` (when the last switch finished)
+  - `pending_switch` (if a switch is queued)
+
+**If you need legacy behavior (immediate switch, no queue):**
+- Remove the task registry logic from `main.go` (see commit history for rollback).
 
 ## Configuration
 
@@ -68,12 +77,30 @@ echo "start service01" | nc 127.0.0.1 20100
 printf 'start service01\n' | nc 127.0.0.1 20100
 ```
 
+**If a switch is already running:**
+
+You will receive a `busy` response. The switch will be queued and processed after the current task completes. Only one queued switch is tracked at a time.
+```
+
 **Important:** Commands MUST end with a newline (`\n`). Without it, the connection will hang until timeout.
 
 Read status:
 
 ```bash
 nc 127.0.0.1 30100
+```
+
+Example status response (JSON):
+
+```json
+{
+  "healthy": true,
+  "last_activated": "service01",
+  "active_task": false,
+  "task_started_at": "2026-05-15T12:34:56Z",
+  "task_done_at": "2026-05-15T12:35:01Z",
+  "pending_switch": "service02"
+}
 ```
 
 ## systemd unit
@@ -157,8 +184,14 @@ python3 test/lan_service_benchmark.py \
 Outputs:
 - `benchmark_report_<timestamp>.json`
 - `benchmark_report_<timestamp>.txt`
+- `sample_<timestamp>_<service>_<phase>_*` files saved directly in `test/`
+  - response payloads for warm-up and production phases
+  - extracted embedded media (data URIs)
+  - downloaded linked media assets (if enabled)
 
 Notes:
 - update `service_tests` in benchmark config to match real production paths and payloads
 - update `expected_status_codes` and `response_must_contain` to enforce true readiness
 - set `wol.enabled=true` plus `target_mac` and `broadcast_ip` when testing wake-up behavior
+- benchmark JSON includes a `port_review` section and per-service `call_examples`
+  showing the switch command and endpoint `curl` invocation used for verification

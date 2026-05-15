@@ -53,11 +53,21 @@ type Server struct {
 	starter       ServiceStarter
 	mu            sync.RWMutex
 	lastActivated string
+
+	// Task coordination fields
+	activeTask    bool      // true if a task is running
+	taskStartedAt time.Time // when the current task started
+	taskDoneAt    time.Time // when the last task completed
+	pendingSwitch string    // if non-empty, a switch is queued
 }
 
 type Status struct {
-	Healthy       bool   `json:"healthy"`
-	LastActivated string `json:"last_activated"`
+	Healthy         bool      `json:"healthy"`
+	LastActivated   string    `json:"last_activated"`
+	ActiveTask      bool      `json:"active_task"`
+	TaskStartedAt   time.Time `json:"task_started_at,omitempty"`
+	TaskDoneAt      time.Time `json:"task_done_at,omitempty"`
+	PendingSwitch   string    `json:"pending_switch,omitempty"`
 }
 
 func main() {
@@ -238,48 +248,88 @@ func (s *Server) handleCommandConnection(ctx context.Context, conn net.Conn) {
 }
 
 func (s *Server) handleCommand(ctx context.Context, command string) (string, error) {
-	fields := strings.Fields(strings.TrimSpace(command))
-	if len(fields) != 2 || fields[0] != "start" {
-		log.Printf("invalid command format: %q", strings.TrimSpace(command))
-		return "", errors.New("unsupported command")
-	}
+       fields := strings.Fields(strings.TrimSpace(command))
+       if len(fields) != 2 || fields[0] != "start" {
+	       log.Printf("invalid command format: %q", strings.TrimSpace(command))
+	       return "", errors.New("unsupported command")
+       }
 
-	name := fields[1]
-	location, ok := s.config.Services[name]
-	if !ok {
-		log.Printf("service not found in config: %q", name)
-		return "", errors.New("unknown service")
-	}
+       name := fields[1]
+       location, ok := s.config.Services[name]
+       if !ok {
+	       log.Printf("service not found in config: %q", name)
+	       return "", errors.New("unknown service")
+       }
 
-	unit, err := normalizeUnit(location)
-	if err != nil {
-		log.Printf("invalid unit path for service %q: %v", name, err)
-		return "", err
-	}
+       s.mu.Lock()
+       if s.activeTask {
+	       // If a task is running, queue the switch and reject this command
+	       if s.pendingSwitch == "" {
+		       s.pendingSwitch = name
+		       log.Printf("task in progress, queued switch to %q", name)
+	       } else {
+		       log.Printf("task in progress, switch already queued to %q", s.pendingSwitch)
+	       }
+	       s.mu.Unlock()
+	       return "busy\n", nil
+       }
+       // No active task, proceed
+       s.activeTask = true
+       s.taskStartedAt = time.Now()
+       s.mu.Unlock()
 
-	log.Printf("starting service: %q (unit: %q)", name, unit)
-	if err := s.starter.Start(ctx, unit); err != nil {
-		log.Printf("failed to start service %q: %v", unit, err)
-		return "", err
-	}
+       unit, err := normalizeUnit(location)
+       if err != nil {
+	       log.Printf("invalid unit path for service %q: %v", name, err)
+	       s.mu.Lock()
+	       s.activeTask = false
+	       s.taskDoneAt = time.Now()
+	       s.mu.Unlock()
+	       return "", err
+       }
 
-	s.mu.Lock()
-	s.lastActivated = name
-	s.mu.Unlock()
+       log.Printf("starting service: %q (unit: %q)", name, unit)
+       err = s.starter.Start(ctx, unit)
 
-	log.Printf("successfully started service: %q", name)
-	return "ok\n", nil
+       s.mu.Lock()
+       s.lastActivated = name
+       s.activeTask = false
+       s.taskDoneAt = time.Now()
+       // If a switch was queued during this task, start it now
+       queued := s.pendingSwitch
+       s.pendingSwitch = ""
+       s.mu.Unlock()
+
+       if err != nil {
+	       log.Printf("failed to start service %q: %v", unit, err)
+	       return "", err
+       }
+
+       log.Printf("successfully started service: %q", name)
+       // If a switch was queued, trigger it in a goroutine
+       if queued != "" && queued != name {
+	       go func(next string) {
+		       log.Printf("processing queued switch to %q", next)
+		       // Use background context for queued switch
+		       _, _ = s.handleCommand(context.Background(), "start "+next)
+	       }(queued)
+       }
+       return "ok\n", nil
 }
 
 func (s *Server) handleStatusConnection(conn net.Conn) {
-	defer conn.Close()
+       defer conn.Close()
 
-	s.mu.RLock()
-	status := Status{
-		Healthy:       true,
-		LastActivated: s.lastActivated,
-	}
-	s.mu.RUnlock()
+       s.mu.RLock()
+       status := Status{
+	       Healthy:       true,
+	       LastActivated: s.lastActivated,
+	       ActiveTask:    s.activeTask,
+	       TaskStartedAt: s.taskStartedAt,
+	       TaskDoneAt:    s.taskDoneAt,
+	       PendingSwitch: s.pendingSwitch,
+       }
+       s.mu.RUnlock()
 
-	_ = json.NewEncoder(conn).Encode(status)
+       _ = json.NewEncoder(conn).Encode(status)
 }

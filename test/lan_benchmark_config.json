@@ -18,6 +18,13 @@
     "requests": 20,
     "interval_seconds": 1.0
   },
+  "samples": {
+    "save_response_bodies": true,
+    "save_all_production_samples": true,
+    "download_linked_assets": true,
+    "max_response_bytes": 26214400,
+    "max_link_download_bytes": 26214400
+  },
   "service_tests": [
     {"service_name": "image-flux", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/image-flux", "method": "POST", "payload": {"ping": "image-flux"}, "expected_status_codes": [200], "response_must_contain": ""},
     {"service_name": "image-qwen", "group": "amd", "endpoint_url": "http://192.168.8.5:30000/image-qwen", "method": "POST", "payload": {"ping": "image-qwen"}, "expected_status_codes": [200], "response_must_contain": ""},

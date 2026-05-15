@@ -1,0 +1,245 @@
+timestamp_utc: 2026-05-14T21:49:28.633780+00:00
+benchmark_config_path: /tmp/lan_benchmark_smoke.json
+services_config_path: /git/service_switcher/services.json
+command_address: 0.0.0.0:20100
+status_address: 0.0.0.0:30100
+group_order: amd, nvidia
+
+port_review:
+  192.168.8.5:30000: image-flux, image-qwen, image-sdxl, image-sdxl-turbo, llm-gpt120b, llm-gpt20b, llm-llama70b, llm-mixtral-llama70b, llm-mixtral8x22b, llm-nemotron-nano, llm-nemotron-super, llm-qwen327b, llm-wizardlm8x22b, translator-accurate, translator-fast, translator-medium, tts-coqui, tts-f5, tts-qwen3-clone, tts-qwen3-design, tts-qwen3-studio, video-animatediff, video-ltx, video-svd
+
+summary: total=24 passed=0 failed=24 avg_warmup=Nones avg_switch=0.023s
+
+service: image-flux group=amd
+switch_ok=True switch_elapsed=0.025s response=ok
+warmup_seconds=None shutdown_delay_seconds=None overlap_seen=False
+samples: warmup=0 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start image-flux' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "image-flux"}' 'http://192.168.8.5:30000/image-flux'
+
+service: image-qwen group=amd
+switch_ok=False switch_elapsed=0.012s response=error
+warmup_seconds=None shutdown_delay_seconds=0.012 overlap_seen=False
+samples: warmup=0 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start image-qwen' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "image-qwen"}' 'http://192.168.8.5:30000/image-qwen'
+
+service: image-sdxl group=amd
+switch_ok=True switch_elapsed=0.049s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.051 overlap_seen=False
+samples: warmup=0 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start image-sdxl' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "image-sdxl"}' 'http://192.168.8.5:30000/image-sdxl'
+
+service: image-sdxl-turbo group=amd
+switch_ok=True switch_elapsed=0.024s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.025 overlap_seen=False
+samples: warmup=0 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start image-sdxl-turbo' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "image-sdxl-turbo"}' 'http://192.168.8.5:30000/image-sdxl-turbo'
+
+service: translator-accurate group=amd
+switch_ok=True switch_elapsed=0.023s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.024 overlap_seen=False
+samples: warmup=0 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start translator-accurate' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "translator-accurate"}' 'http://192.168.8.5:30000/translator-accurate'
+
+service: translator-fast group=amd
+switch_ok=True switch_elapsed=0.011s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.011 overlap_seen=False
+samples: warmup=1 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start translator-fast' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "translator-fast"}' 'http://192.168.8.5:30000/translator-fast'
+artifact=/git/service_switcher/test/sample_20260514_214952Z_translator-fast_warmup_001_response.json
+
+service: translator-medium group=amd
+switch_ok=True switch_elapsed=0.035s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.039 overlap_seen=False
+samples: warmup=1 shutdown=1 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start translator-medium' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "translator-medium"}' 'http://192.168.8.5:30000/translator-medium'
+artifact=/git/service_switcher/test/sample_20260514_214956Z_translator-medium_warmup_001_response.json
+artifact=/git/service_switcher/test/sample_20260514_214956Z_translator-fast_shutdown-after-switch-to-translator-medium_001_response.json
+
+service: tts-coqui group=amd
+switch_ok=True switch_elapsed=0.035s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.04 overlap_seen=False
+samples: warmup=1 shutdown=1 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start tts-coqui' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "tts-coqui"}' 'http://192.168.8.5:30000/tts-coqui'
+artifact=/git/service_switcher/test/sample_20260514_215000Z_tts-coqui_warmup_001_response.json
+artifact=/git/service_switcher/test/sample_20260514_215000Z_translator-medium_shutdown-after-switch-to-tts-coqui_001_response.json
+
+service: tts-f5 group=amd
+switch_ok=True switch_elapsed=0.027s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.029 overlap_seen=False
+samples: warmup=1 shutdown=1 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start tts-f5' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "tts-f5"}' 'http://192.168.8.5:30000/tts-f5'
+artifact=/git/service_switcher/test/sample_20260514_215004Z_tts-f5_warmup_001_response.json
+artifact=/git/service_switcher/test/sample_20260514_215004Z_tts-coqui_shutdown-after-switch-to-tts-f5_001_response.json
+
+service: tts-qwen3-clone group=amd
+switch_ok=True switch_elapsed=0.03s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.035 overlap_seen=False
+samples: warmup=0 shutdown=1 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start tts-qwen3-clone' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "tts-qwen3-clone"}' 'http://192.168.8.5:30000/tts-qwen3-clone'
+artifact=/git/service_switcher/test/sample_20260514_215008Z_tts-f5_shutdown-after-switch-to-tts-qwen3-clone_001_response.json
+
+service: tts-qwen3-design group=amd
+switch_ok=True switch_elapsed=0.018s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.018 overlap_seen=False
+samples: warmup=0 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start tts-qwen3-design' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "tts-qwen3-design"}' 'http://192.168.8.5:30000/tts-qwen3-design'
+
+service: tts-qwen3-studio group=amd
+switch_ok=True switch_elapsed=0.035s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.037 overlap_seen=False
+samples: warmup=0 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start tts-qwen3-studio' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "tts-qwen3-studio"}' 'http://192.168.8.5:30000/tts-qwen3-studio'
+
+service: video-animatediff group=amd
+switch_ok=True switch_elapsed=0.017s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.017 overlap_seen=False
+samples: warmup=0 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start video-animatediff' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "video-animatediff"}' 'http://192.168.8.5:30000/video-animatediff'
+
+service: video-ltx group=amd
+switch_ok=False switch_elapsed=0.012s response=error
+warmup_seconds=None shutdown_delay_seconds=0.012 overlap_seen=False
+samples: warmup=0 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start video-ltx' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "video-ltx"}' 'http://192.168.8.5:30000/video-ltx'
+
+service: video-svd group=amd
+switch_ok=True switch_elapsed=0.031s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.031 overlap_seen=False
+samples: warmup=0 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start video-svd' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "video-svd"}' 'http://192.168.8.5:30000/video-svd'
+
+service: llm-gpt120b group=nvidia
+switch_ok=True switch_elapsed=0.026s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.027 overlap_seen=False
+samples: warmup=1 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start llm-gpt120b' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "llm-gpt120b"}' 'http://192.168.8.5:30000/llm-gpt120b'
+artifact=/git/service_switcher/test/sample_20260514_215033Z_llm-gpt120b_warmup_001_response.json
+
+service: llm-gpt20b group=nvidia
+switch_ok=True switch_elapsed=0.021s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.048 overlap_seen=False
+samples: warmup=0 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start llm-gpt20b' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "llm-gpt20b"}' 'http://192.168.8.5:30000/llm-gpt20b'
+
+service: llm-llama70b group=nvidia
+switch_ok=True switch_elapsed=0.033s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.035 overlap_seen=False
+samples: warmup=1 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start llm-llama70b' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "llm-llama70b"}' 'http://192.168.8.5:30000/llm-llama70b'
+artifact=/git/service_switcher/test/sample_20260514_215041Z_llm-llama70b_warmup_001_response.json
+
+service: llm-mixtral-llama70b group=nvidia
+switch_ok=False switch_elapsed=0.004s response=error
+warmup_seconds=None shutdown_delay_seconds=0.005 overlap_seen=False
+samples: warmup=1 shutdown=1 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start llm-mixtral-llama70b' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "llm-mixtral-llama70b"}' 'http://192.168.8.5:30000/llm-mixtral-llama70b'
+artifact=/git/service_switcher/test/sample_20260514_215045Z_llm-mixtral-llama70b_warmup_001_response.json
+artifact=/git/service_switcher/test/sample_20260514_215045Z_llm-llama70b_shutdown-after-switch-to-llm-mixtral-llama70b_001_response.json
+
+service: llm-mixtral8x22b group=nvidia
+switch_ok=False switch_elapsed=0.009s response=error
+warmup_seconds=None shutdown_delay_seconds=0.013 overlap_seen=False
+samples: warmup=1 shutdown=1 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start llm-mixtral8x22b' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "llm-mixtral8x22b"}' 'http://192.168.8.5:30000/llm-mixtral8x22b'
+artifact=/git/service_switcher/test/sample_20260514_215049Z_llm-mixtral8x22b_warmup_001_response.json
+artifact=/git/service_switcher/test/sample_20260514_215049Z_llm-mixtral-llama70b_shutdown-after-switch-to-llm-mixtral8x22b_001_response.json
+
+service: llm-nemotron-nano group=nvidia
+switch_ok=True switch_elapsed=0.018s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.083 overlap_seen=False
+samples: warmup=1 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start llm-nemotron-nano' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "llm-nemotron-nano"}' 'http://192.168.8.5:30000/llm-nemotron-nano'
+artifact=/git/service_switcher/test/sample_20260514_215053Z_llm-nemotron-nano_warmup_001_response.json
+
+service: llm-nemotron-super group=nvidia
+switch_ok=True switch_elapsed=0.018s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.047 overlap_seen=False
+samples: warmup=1 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start llm-nemotron-super' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "llm-nemotron-super"}' 'http://192.168.8.5:30000/llm-nemotron-super'
+artifact=/git/service_switcher/test/sample_20260514_215057Z_llm-nemotron-super_warmup_001_response.json
+
+service: llm-qwen327b group=nvidia
+switch_ok=False switch_elapsed=0.006s response=error
+warmup_seconds=None shutdown_delay_seconds=0.008 overlap_seen=False
+samples: warmup=1 shutdown=1 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start llm-qwen327b' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "llm-qwen327b"}' 'http://192.168.8.5:30000/llm-qwen327b'
+artifact=/git/service_switcher/test/sample_20260514_215101Z_llm-qwen327b_warmup_001_response.json
+artifact=/git/service_switcher/test/sample_20260514_215101Z_llm-nemotron-super_shutdown-after-switch-to-llm-qwen327b_001_response.json
+
+service: llm-wizardlm8x22b group=nvidia
+switch_ok=True switch_elapsed=0.021s response=ok
+warmup_seconds=None shutdown_delay_seconds=0.078 overlap_seen=False
+samples: warmup=0 shutdown=0 production=0
+production: req=1 success=0 fail=1 p50=Nones p95=Nones p99=Nones
+result=failed message=switch, warmup, or production checks failed
+switch_call=echo 'start llm-wizardlm8x22b' | nc 0.0.0.0 20100
+endpoint_call=curl -sS -X POST -H 'Content-Type: application/json' --data '{"ping": "llm-wizardlm8x22b"}' 'http://192.168.8.5:30000/llm-wizardlm8x22b'
