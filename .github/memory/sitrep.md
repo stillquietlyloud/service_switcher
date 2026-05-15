@@ -1,6 +1,37 @@
 # SITREP
 
 ## Run Metadata
+- Date: 2026-05-15 (latest run)
+- Trigger: LAN workload test harness — smoke tests for image-sdxl and translator-accurate services
+- Agent: AI Service Workload Agent
+
+## Latest Test Results
+| Service | Type | Result | Artifact | Latency |
+|---------|------|--------|----------|--------|
+| translator-accurate | amd/translator | ✅ PASSED | workload_20260515_181237Z_translator-accurate.txt (366 B) | 22.9s |
+| image-sdxl | nvidia/image | ✅ PASSED | workload_20260515_195653Z_image-sdxl.png (1.4 MB) | 8.6s |
+| tts-f5 | nvidia/tts | ❌ FAILED | none | n/a — Voice 'en-female' not found |
+| LLM services (9) | amd/llm | ⏭ NOT TESTED | — | requires service-stopper |
+
+## Current Service State
+- `image-sdxl`: active (test just ran)
+- service-stopper.service: NOT active
+
+## Key Findings
+1. Endpoints confirmed by live probes: image→`/generate`, TTS→`/tts`, translator→`/v1/translate`, LLM→`/v1/chat/completions`
+2. Two-phase readiness poll fixed race condition where old service answered `/health` before new one started
+3. TTS voice files missing — all 5 TTS services fail with "Voice not found" until voice files installed
+4. Translator-accurate Conflicts= spans all services (full cross-lane) — no service-stopper needed for translator↔any
+5. LLM↔NVIDIA transitions (llm↔tts/image/video) still require service-stopper
+
+## Next Steps
+- Install voice files for TTS services (e.g. F5-TTS requires speaker reference audio in `/opt/tts-f5/voices/`)
+- Start service-stopper then run LLM group: `sudo systemctl start service-stopper.service && python3 test/lan_workload_test.py --groups amd`
+- OR bridge via translator: switch to translator-accurate (stops image), then run LLM tests
+
+---
+
+## Previous Run Metadata
 - Date: 2026-05-15
 - Trigger: user requested plan to detect task completion and avoid interrupting active tasks during service switch
 - Agent: AI Service Workload Agent

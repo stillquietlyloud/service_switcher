@@ -5,6 +5,27 @@ Append one entry per execution. Most recent entry at top.
 ---
 
 ## Run
+- Date: 2026-05-15 (LAN workload test harness smoke tests)
+- Trigger: user requested real-workload quality test harness using switcher for all service types
+- Agent: AI Service Workload Agent
+- Files changed: test/lan_workload_test.py (new), test/lan_workload_test_config.json (new), test/probe_api.py (new)
+- Commands run: switcher command+status via nc, curl probes, python3 test/lan_workload_test.py
+
+### Artifacts produced
+- test/workload_20260515_181237Z_translator-accurate.txt (366 B) — French translation, PASSED
+- test/workload_20260515_195653Z_image-sdxl.png (1.4 MB) — Japanese garden image, PASSED
+- test/workload_report_20260515_181240Z.{json,txt}
+- test/workload_report_20260515_195653Z.{json,txt}
+
+### Outcome
+- translator-accurate: PASSED (22.9s workload, 4 latency samples)
+- image-sdxl: PASSED (8.6s workload, 1.4 MB PNG confirmed correct quality)
+- tts-f5: FAILED — deployment issue, no voice files installed (GET /voices returns [])
+- LLM services: not tested — service-stopper required
+
+---
+
+## Run
 - Date: 2026-05-15
 - Trigger: user requested a plan to prevent service switch interruption of active tasks and to detect completion
 - Agent: AI Service Workload Agent

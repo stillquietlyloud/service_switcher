@@ -19,3 +19,8 @@ Track each finding/remediation point until closure.
 | P-013 | observability | Expand status payload and add optional task query endpoint | AI Service Workload Agent | low | todo | planned protocol/status extension | 2026-05-15 |
 | P-014 | validation | Add tests for busy handling, queue behavior, and completion transitions | AI Service Workload Agent | medium | todo | main_test.go expansion planned | 2026-05-15 |
 | P-015 | validation | Extend LAN benchmark assertions for non-interrupting switches | AI Service Workload Agent | low | todo | test/lan_service_benchmark.py transition checks | 2026-05-15 |
+| P-016 | workload-test | Build LAN workload test harness with real inference payloads and artifact saving | AI Service Workload Agent | medium | done | test/lan_workload_test.py + test/lan_workload_test_config.json | 2026-05-15 |
+| P-017 | workload-test | Smoke-test translator-accurate | AI Service Workload Agent | low | done | workload_20260515_181237Z_translator-accurate.txt — PASSED | 2026-05-15 |
+| P-018 | workload-test | Smoke-test image-sdxl | AI Service Workload Agent | low | done | workload_20260515_195653Z_image-sdxl.png 1.4MB — PASSED | 2026-05-15 |
+| P-019 | workload-test | TTS voice files missing on tts-f5 (and likely all TTS services) | AI Service Workload Agent | medium | blocked | GET /voices returns []; "Voice 'en-female' not found" | 2026-05-15 |
+| P-020 | workload-test | Smoke-test LLM services (9 services) | AI Service Workload Agent | medium | todo | Requires service-stopper; bridge via translator if needed | 2026-05-15 |

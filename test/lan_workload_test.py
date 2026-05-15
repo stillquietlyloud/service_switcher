@@ -26,6 +26,7 @@ import math
 import re
 import socket
 import statistics
+import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -39,6 +40,11 @@ from urllib import error, request as urllib_request
 MAX_WORKLOAD_BYTES = 64 * 1024 * 1024   # 64 MB cap for workload responses
 MAX_PROBE_BYTES = 2 * 1024 * 1024       # 2 MB cap for readiness probe responses
 MAX_SNIPPET = 1000                       # characters shown in report for text/JSON
+
+# How long to wait for the old service to stop before polling for the new one.
+# Prevents the health poll from immediately catching the old service on port 30000.
+_DOWN_PHASE_TIMEOUT = 15.0   # seconds to wait for health to go DOWN
+_DOWN_PHASE_POLL    = 1.0    # poll interval during down-phase
 
 
 # ---------------------------------------------------------------------------
@@ -263,32 +269,72 @@ def http_request(
 # ---------------------------------------------------------------------------
 
 def poll_readiness(
-    url: str,
-    method: str,
-    probe_payload: Optional[Dict[str, Any]],
+    health_url: str,
     expected_codes: List[int],
     http_timeout: float,
     readiness_timeout: float,
     poll_interval: float,
 ) -> Tuple[bool, float, Dict[str, Any]]:
-    """Poll an endpoint until it responds with an expected status code.
+    """Poll GET /health with two-phase down→up detection.
 
-    Returns (ready, elapsed_seconds, last_response_dict).
+    Phase 1 (down): poll every _DOWN_PHASE_POLL seconds for up to _DOWN_PHASE_TIMEOUT
+                    seconds, waiting for health to fail (old service stopped via
+                    systemd Conflicts=).  If health stays up the whole window, assume
+                    we are already on the right service and skip the wait.
+    Phase 2 (up):   poll at poll_interval for up to readiness_timeout seconds, waiting
+                    for health to return an expected status code (new service ready).
+
+    Returns (ready, total_elapsed_seconds, last_response_dict).
     """
     t0 = time.perf_counter()
     last: Dict[str, Any] = {}
+    attempt = 0
 
+    # ------------------------------------------------------------------
+    # Phase 1: wait for old service to go DOWN
+    # ------------------------------------------------------------------
+    print(f"  waiting for old service to stop (up to {_DOWN_PHASE_TIMEOUT:.0f}s) ...")
+    while True:
+        elapsed = time.perf_counter() - t0
+        if elapsed >= _DOWN_PHASE_TIMEOUT:
+            print(f"  old service did not stop within {_DOWN_PHASE_TIMEOUT:.0f}s — assuming correct service")
+            break
+
+        resp = http_request(health_url, "GET", None, http_timeout, MAX_PROBE_BYTES)
+        attempt += 1
+
+        if not resp["transport_ok"] or resp["status_code"] not in expected_codes:
+            elapsed = time.perf_counter() - t0
+            print(f"  old service down after {elapsed:.1f}s — waiting for new service ...")
+            break
+
+        time.sleep(_DOWN_PHASE_POLL)
+
+    # ------------------------------------------------------------------
+    # Phase 2: wait for new service to come UP
+    # ------------------------------------------------------------------
+    print(f"  polling GET {health_url} (timeout={readiness_timeout:.0f}s, interval={poll_interval:.0f}s) ...")
     while True:
         elapsed = time.perf_counter() - t0
         if elapsed >= readiness_timeout:
+            print(f"    [attempt {attempt}] TIMEOUT after {elapsed:.0f}s — service did not become ready")
             return False, elapsed, last
 
-        resp = http_request(url, method, probe_payload, http_timeout, MAX_PROBE_BYTES)
+        resp = http_request(health_url, "GET", None, http_timeout, MAX_PROBE_BYTES)
         last = resp
+        attempt += 1
 
         if resp["transport_ok"] and resp["status_code"] in expected_codes:
-            return True, time.perf_counter() - t0, resp
+            elapsed = time.perf_counter() - t0
+            print(f"    [attempt {attempt}] READY after {elapsed:.1f}s — HTTP {resp['status_code']}")
+            return True, elapsed, resp
 
+        if resp["status_code"] is not None:
+            info = f"HTTP {resp['status_code']}"
+        else:
+            info = f"no response: {resp['snippet'][:80]}"
+        elapsed = time.perf_counter() - t0
+        print(f"    [attempt {attempt}] {elapsed:.0f}s elapsed — {info}, retrying in {poll_interval:.0f}s ...")
         time.sleep(poll_interval)
 
 
@@ -343,7 +389,9 @@ def run_service_test(
     *,
     service_name: str,
     group: str,
+    service_type: str,
     endpoint_url: str,
+    health_url: str,
     method: str,
     readiness_payload: Optional[Dict[str, Any]],
     workload_payload: Optional[Dict[str, Any]],
@@ -417,11 +465,8 @@ def run_service_test(
     # 3. Readiness polling
     # ------------------------------------------------------------------
     probe = readiness_payload if readiness_payload is not None else workload_payload
-    print(f"  polling readiness (timeout={readiness_timeout}s, interval={poll_interval}s) ...")
     ready, warmup_elapsed, ready_resp = poll_readiness(
-        url=endpoint_url,
-        method=method,
-        probe_payload=probe,
+        health_url=health_url,
         expected_codes=expected_codes,
         http_timeout=http_timeout,
         readiness_timeout=readiness_timeout,
@@ -462,12 +507,47 @@ def run_service_test(
     # 5. Save artifact
     # ------------------------------------------------------------------
     if workload_ok and workload_resp["response_bytes"]:
-        artifact_bytes, artifact_ct = resolve_artifact(
-            workload_resp["response_bytes"],
-            workload_resp["content_type"],
-        )
+        artifact_bytes: Optional[bytes] = None
+        artifact_ct: Optional[str] = None
+
+        # LLM: extract generated text from choices[0].message.content
+        if service_type == "llm":
+            try:
+                obj = json.loads(workload_resp["response_bytes"].decode("utf-8", errors="replace"))
+                choices = obj.get("choices", [])
+                if choices:
+                    text = (
+                        choices[0].get("message", {}).get("content", "")
+                        or choices[0].get("text", "")
+                    )
+                    if text:
+                        artifact_bytes = text.encode("utf-8")
+                        artifact_ct = "text/plain"
+                        result["workload_snippet"] = text[:MAX_SNIPPET]
+            except Exception as exc:
+                print(f"  WARNING: could not extract LLM text: {exc}")
+
+        # Translator: extract translated_text from JSON
+        elif service_type == "translator":
+            try:
+                obj = json.loads(workload_resp["response_bytes"].decode("utf-8", errors="replace"))
+                translated = obj.get("translated_text", "")
+                if translated:
+                    artifact_bytes = translated.encode("utf-8")
+                    artifact_ct = "text/plain"
+                    result["workload_snippet"] = translated[:MAX_SNIPPET]
+            except Exception as exc:
+                print(f"  WARNING: could not extract translation: {exc}")
+
+        # Image / TTS / video / unknown: use binary/base64 detection
+        if artifact_bytes is None:
+            artifact_bytes, artifact_ct = resolve_artifact(
+                workload_resp["response_bytes"],
+                workload_resp["content_type"],
+            )
+
         try:
-            artifact_path = save_artifact(script_dir, service_name, artifact_bytes, artifact_ct)
+            artifact_path = save_artifact(script_dir, service_name, artifact_bytes, artifact_ct or "application/octet-stream")
             result["artifact_path"] = str(artifact_path)
             result["artifact_size_bytes"] = len(artifact_bytes)
             result["artifact_content_type"] = artifact_ct
@@ -662,7 +742,10 @@ def main() -> int:
     poll_interval = float(cfg.get("poll_interval_seconds", 3.0))
     latency_requests = int(cfg.get("latency_requests", 3))
 
-    group_order: List[str] = [str(g).lower() for g in cfg.get("group_order", ["amd", "nvidia"])]
+    health_base_url = str(cfg.get("health_base_url", f"http://{switcher_host}:30000"))
+    health_url = health_base_url.rstrip("/") + "/health"
+
+    group_order: List[str] = [str(g).lower() for g in cfg.get("group_order", ["nvidia", "amd"])]
     selected_groups: Optional[List[str]] = (
         [g.lower() for g in args.groups] if args.groups else None
     )
@@ -670,6 +753,23 @@ def main() -> int:
         list(args.services) if args.services else None
     )
     active_groups = selected_groups or group_order
+
+    # Warn if service-stopper is not running — cross-lane transitions will hang
+    try:
+        sp = subprocess.run(
+            ["systemctl", "is-active", "service-stopper.service"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if sp.stdout.strip() != "active":
+            print("WARNING: service-stopper.service is NOT active on this host.")
+            print("         LLM<->NVIDIA service transitions (llm<->tts/image/video) require")
+            print("         service-stopper to stop the old service before the new one can")
+            print("         bind port 30000.  Translator services have full cross-lane")
+            print("         Conflicts= and do not need service-stopper.")
+            print("         Start it with: sudo systemctl start service-stopper.service")
+            print()
+    except Exception:
+        pass  # Not running on the AI node — skip check
 
     service_tests: List[Dict[str, Any]] = cfg.get("service_tests", [])
     if not service_tests:
@@ -720,6 +820,7 @@ def main() -> int:
     for test in ordered_tests:
         service_name = str(test.get("service_name", ""))
         group = str(test.get("group", ""))
+        service_type = str(test.get("service_type", "unknown"))
         endpoint_url = str(test.get("endpoint_url", ""))
         method = str(test.get("method", "POST")).upper()
         readiness_payload: Optional[Dict[str, Any]] = test.get("readiness_payload")
@@ -733,7 +834,9 @@ def main() -> int:
         result = run_service_test(
             service_name=service_name,
             group=group,
+            service_type=service_type,
             endpoint_url=endpoint_url,
+            health_url=health_url,
             method=method,
             readiness_payload=readiness_payload,
             workload_payload=workload_payload,

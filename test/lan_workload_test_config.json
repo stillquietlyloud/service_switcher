@@ -1,9 +1,10 @@
 {
-  "_comment": "Real-workload quality tester config for service_switcher. Adjust switcher_host, command_port, status_port, and each endpoint_url to match your deployment. Payload shapes may need tuning per service API.",
+  "_comment": "Real-workload quality tester config. GPU lanes share port 30000: 'nvidia' (image/tts/video, FastAPI POST /generate or /tts) and 'amd' (LLM llama-server POST /v1/chat/completions, translator FastAPI POST /v1/translate). Translator Conflicts= covers all services. LLM<->NVIDIA transitions need service-stopper.service.",
   "switcher_host": "192.168.8.5",
   "command_port": 20100,
   "status_port": 30100,
-  "group_order": ["amd", "nvidia"],
+  "health_base_url": "http://192.168.8.5:30000",
+  "group_order": ["nvidia", "amd"],
   "timeouts": {
     "socket_seconds": 10,
     "http_seconds": 300,
@@ -14,8 +15,9 @@
   "service_tests": [
     {
       "service_name": "image-flux",
-      "group": "amd",
-      "endpoint_url": "http://192.168.8.5:30000/image-flux",
+      "group": "nvidia",
+      "service_type": "image",
+      "endpoint_url": "http://192.168.8.5:30000/generate",
       "method": "POST",
       "readiness_payload": {"prompt": "test", "width": 64, "height": 64, "steps": 1},
       "workload_payload": {
@@ -30,8 +32,9 @@
     },
     {
       "service_name": "image-qwen",
-      "group": "amd",
-      "endpoint_url": "http://192.168.8.5:30000/image-qwen",
+      "group": "nvidia",
+      "service_type": "image",
+      "endpoint_url": "http://192.168.8.5:30000/generate",
       "method": "POST",
       "readiness_payload": {"prompt": "test"},
       "workload_payload": {
@@ -43,8 +46,9 @@
     },
     {
       "service_name": "image-sdxl",
-      "group": "amd",
-      "endpoint_url": "http://192.168.8.5:30000/image-sdxl",
+      "group": "nvidia",
+      "service_type": "image",
+      "endpoint_url": "http://192.168.8.5:30000/generate",
       "method": "POST",
       "readiness_payload": {"prompt": "test", "width": 64, "height": 64, "steps": 1},
       "workload_payload": {
@@ -60,8 +64,9 @@
     },
     {
       "service_name": "image-sdxl-turbo",
-      "group": "amd",
-      "endpoint_url": "http://192.168.8.5:30000/image-sdxl-turbo",
+      "group": "nvidia",
+      "service_type": "image",
+      "endpoint_url": "http://192.168.8.5:30000/generate",
       "method": "POST",
       "readiness_payload": {"prompt": "test", "width": 64, "height": 64, "steps": 1},
       "workload_payload": {
@@ -77,43 +82,46 @@
     {
       "service_name": "translator-accurate",
       "group": "amd",
-      "endpoint_url": "http://192.168.8.5:30000/translator-accurate",
+      "service_type": "translator",
+      "endpoint_url": "http://192.168.8.5:30000/v1/translate",
       "method": "POST",
-      "readiness_payload": {"text": "hello", "source_language": "en", "target_language": "fr"},
+      "readiness_payload": {"text": "hello", "src_lang": "en", "tgt_lang": "fr"},
       "workload_payload": {
         "text": "Artificial intelligence is transforming the way we live and work. Machine learning models can now perform complex tasks that were once thought to require human intelligence, including image recognition, natural language understanding, and strategic decision-making.",
-        "source_language": "en",
-        "target_language": "fr"
+        "src_lang": "en",
+        "tgt_lang": "fr"
       },
       "expected_status_codes": [200],
       "quality_criteria": "French translation should be accurate and natural; preserve meaning, technical terms, and sentence structure from the English source",
-      "notes": "Adjust source_language/target_language key names to match the API"
+      "notes": "Accurate translation model on AMD ROCm GPU; TranslateRequest fields: text, src_lang, tgt_lang"
     },
     {
       "service_name": "translator-fast",
       "group": "amd",
-      "endpoint_url": "http://192.168.8.5:30000/translator-fast",
+      "service_type": "translator",
+      "endpoint_url": "http://192.168.8.5:30000/v1/translate",
       "method": "POST",
-      "readiness_payload": {"text": "hello", "source_language": "en", "target_language": "es"},
+      "readiness_payload": {"text": "hello", "src_lang": "en", "tgt_lang": "es"},
       "workload_payload": {
         "text": "The weather is beautiful today. I am going to the park to enjoy the sunshine and fresh air with my family. We will have a picnic near the fountain.",
-        "source_language": "en",
-        "target_language": "es"
+        "src_lang": "en",
+        "tgt_lang": "es"
       },
       "expected_status_codes": [200],
       "quality_criteria": "Spanish translation should be natural and correct; everyday vocabulary should be translated accurately",
-      "notes": "Fast translation model; expect lower latency than translator-accurate"
+      "notes": "Fast translation model on AMD ROCm GPU; expect lower latency than translator-accurate"
     },
     {
       "service_name": "translator-medium",
       "group": "amd",
-      "endpoint_url": "http://192.168.8.5:30000/translator-medium",
+      "service_type": "translator",
+      "endpoint_url": "http://192.168.8.5:30000/v1/translate",
       "method": "POST",
-      "readiness_payload": {"text": "hello", "source_language": "en", "target_language": "de"},
+      "readiness_payload": {"text": "hello", "src_lang": "en", "tgt_lang": "de"},
       "workload_payload": {
         "text": "Technology has made communication across languages easier than ever before. Real-time translation tools help people understand each other despite language barriers, enabling global collaboration.",
-        "source_language": "en",
-        "target_language": "de"
+        "src_lang": "en",
+        "tgt_lang": "de"
       },
       "expected_status_codes": [200],
       "quality_criteria": "German translation should be grammatically correct and preserve the original meaning; evaluate compound words and sentence structure",
@@ -121,8 +129,9 @@
     },
     {
       "service_name": "tts-coqui",
-      "group": "amd",
-      "endpoint_url": "http://192.168.8.5:30000/tts-coqui",
+      "group": "nvidia",
+      "service_type": "tts",
+      "endpoint_url": "http://192.168.8.5:30000/tts",
       "method": "POST",
       "readiness_payload": {"text": "test"},
       "workload_payload": {
@@ -131,12 +140,13 @@
       },
       "expected_status_codes": [200],
       "quality_criteria": "Audio should be clear speech with natural prosody; no robotic artifacts, correct pronunciation, comfortable listening pace",
-      "notes": "Coqui TTS; response may be binary audio (wav/mp3) or JSON with base64"
+      "notes": "Coqui TTS on NVIDIA GPU; REQUIRES voice files in /opt/tts-coqui/voices/ — test fails with 404 until voices installed"
     },
     {
       "service_name": "tts-f5",
-      "group": "amd",
-      "endpoint_url": "http://192.168.8.5:30000/tts-f5",
+      "group": "nvidia",
+      "service_type": "tts",
+      "endpoint_url": "http://192.168.8.5:30000/tts",
       "method": "POST",
       "readiness_payload": {"text": "test"},
       "workload_payload": {
@@ -145,12 +155,13 @@
       },
       "expected_status_codes": [200],
       "quality_criteria": "Audio should synthesize all pangram phonemes clearly; evaluate voice naturalness, pace, and absence of artifacts",
-      "notes": "F5-TTS; pangrams stress the full phoneme range"
+      "notes": "F5-TTS voice cloning on NVIDIA CUDA GPU; REQUIRES voice files configured (GET /voices must return entries) — test fails with 404 'Voice not found' until voices installed; pangrams stress the full phoneme range"
     },
     {
       "service_name": "tts-qwen3-clone",
-      "group": "amd",
-      "endpoint_url": "http://192.168.8.5:30000/tts-qwen3-clone",
+      "group": "nvidia",
+      "service_type": "tts",
+      "endpoint_url": "http://192.168.8.5:30000/tts",
       "method": "POST",
       "readiness_payload": {"text": "test"},
       "workload_payload": {
@@ -159,12 +170,13 @@
       },
       "expected_status_codes": [200],
       "quality_criteria": "Voice should sound natural with cloned characteristics; evaluate similarity to target voice, prosody variation, and absence of glitches",
-      "notes": "Qwen3 voice clone mode"
+      "notes": "Qwen3 voice clone mode on NVIDIA GPU; REQUIRES voice files configured"
     },
     {
       "service_name": "tts-qwen3-design",
-      "group": "amd",
-      "endpoint_url": "http://192.168.8.5:30000/tts-qwen3-design",
+      "group": "nvidia",
+      "service_type": "tts",
+      "endpoint_url": "http://192.168.8.5:30000/tts",
       "method": "POST",
       "readiness_payload": {"text": "test"},
       "workload_payload": {
@@ -173,12 +185,13 @@
       },
       "expected_status_codes": [200],
       "quality_criteria": "Voice should have a clear, professional design character; evaluate warmth, clarity, and conversational naturalness",
-      "notes": "Qwen3 designed voice mode"
+      "notes": "Qwen3 designed voice mode on NVIDIA GPU; REQUIRES voice files configured"
     },
     {
       "service_name": "tts-qwen3-studio",
-      "group": "amd",
-      "endpoint_url": "http://192.168.8.5:30000/tts-qwen3-studio",
+      "group": "nvidia",
+      "service_type": "tts",
+      "endpoint_url": "http://192.168.8.5:30000/tts",
       "method": "POST",
       "readiness_payload": {"text": "test"},
       "workload_payload": {
@@ -187,12 +200,13 @@
       },
       "expected_status_codes": [200],
       "quality_criteria": "Audio should have studio-quality clarity; evaluate dynamic range, absence of background noise, and broadcast-ready voice character",
-      "notes": "Qwen3 studio voice mode"
+      "notes": "Qwen3 studio voice mode on NVIDIA GPU; REQUIRES voice files configured"
     },
     {
       "service_name": "video-animatediff",
-      "group": "amd",
-      "endpoint_url": "http://192.168.8.5:30000/video-animatediff",
+      "group": "nvidia",
+      "service_type": "video",
+      "endpoint_url": "http://192.168.8.5:30000/generate",
       "method": "POST",
       "readiness_payload": {"prompt": "test", "frames": 4, "steps": 1},
       "workload_payload": {
@@ -205,12 +219,13 @@
       },
       "expected_status_codes": [200],
       "quality_criteria": "Video should show ocean beach at sunset with smooth wave motion; evaluate temporal consistency, no flickering, correct prompt adherence",
-      "notes": "AnimateDiff; response may be binary video (mp4/gif) or JSON with base64"
+      "notes": "AnimateDiff on NVIDIA GPU; response may be binary video (mp4/gif) or JSON with base64"
     },
     {
       "service_name": "video-ltx",
-      "group": "amd",
-      "endpoint_url": "http://192.168.8.5:30000/video-ltx",
+      "group": "nvidia",
+      "service_type": "video",
+      "endpoint_url": "http://192.168.8.5:30000/generate",
       "method": "POST",
       "readiness_payload": {"prompt": "test", "frames": 4, "steps": 1},
       "workload_payload": {
@@ -223,12 +238,13 @@
       },
       "expected_status_codes": [200],
       "quality_criteria": "Video should show cloud motion over mountains with smooth lighting transition; evaluate motion quality and prompt adherence",
-      "notes": "LTX-Video; native aspect ratio 16:9"
+      "notes": "LTX-Video on NVIDIA GPU; native aspect ratio 16:9"
     },
     {
       "service_name": "video-svd",
-      "group": "amd",
-      "endpoint_url": "http://192.168.8.5:30000/video-svd",
+      "group": "nvidia",
+      "service_type": "video",
+      "endpoint_url": "http://192.168.8.5:30000/generate",
       "method": "POST",
       "readiness_payload": {"prompt": "test", "frames": 4, "steps": 1},
       "workload_payload": {
@@ -241,142 +257,187 @@
       },
       "expected_status_codes": [200],
       "quality_criteria": "Video should show smooth forest pan with cinematic depth of field; evaluate motion coherence, lighting quality, and absence of jitter",
-      "notes": "Stable Video Diffusion; native 1024x576"
+      "notes": "Stable Video Diffusion on NVIDIA GPU; native 1024x576"
     },
     {
       "service_name": "llm-gpt120b",
-      "group": "nvidia",
-      "endpoint_url": "http://192.168.8.5:30000/llm-gpt120b",
+      "group": "amd",
+      "service_type": "llm",
+      "endpoint_url": "http://192.168.8.5:30000/v1/chat/completions",
       "method": "POST",
-      "readiness_payload": {"prompt": "hi", "max_tokens": 5},
+      "readiness_payload": {
+        "messages": [{"role": "user", "content": "hi"}],
+        "max_tokens": 5,
+        "temperature": 0.0
+      },
       "workload_payload": {
-        "prompt": "Write a concise technical explanation of how the transformer self-attention mechanism works, including query, key, and value matrices. Aim for about 150 words.",
+        "messages": [{"role": "user", "content": "Write a concise technical explanation of how the transformer self-attention mechanism works, including query, key, and value matrices. Aim for about 150 words."}],
         "max_tokens": 250,
         "temperature": 0.7
       },
       "expected_status_codes": [200],
       "quality_criteria": "Response should accurately explain self-attention with Q/K/V matrices; evaluate technical correctness, clarity, and completeness within the token budget",
-      "notes": "120B parameter model; adjust prompt/messages key names to match API (OpenAI-compat or custom)"
+      "notes": "120B parameter model on AMD ROCm GPU; llama-server OpenAI-compatible API"
     },
     {
       "service_name": "llm-gpt20b",
-      "group": "nvidia",
-      "endpoint_url": "http://192.168.8.5:30000/llm-gpt20b",
+      "group": "amd",
+      "service_type": "llm",
+      "endpoint_url": "http://192.168.8.5:30000/v1/chat/completions",
       "method": "POST",
-      "readiness_payload": {"prompt": "hi", "max_tokens": 5},
+      "readiness_payload": {
+        "messages": [{"role": "user", "content": "hi"}],
+        "max_tokens": 5,
+        "temperature": 0.0
+      },
       "workload_payload": {
-        "prompt": "Write a short creative story (about 120 words) about an astronaut who discovers an ancient alien library on Mars.",
+        "messages": [{"role": "user", "content": "Write a short creative story (about 120 words) about an astronaut who discovers an ancient alien library on Mars."}],
         "max_tokens": 250,
         "temperature": 0.85
       },
       "expected_status_codes": [200],
       "quality_criteria": "Story should be creative, coherent, and on-topic (Mars, alien library, astronaut); evaluate narrative flow, imagination, and completion within word count",
-      "notes": "20B parameter model"
+      "notes": "20B parameter model on AMD ROCm GPU"
     },
     {
       "service_name": "llm-llama70b",
-      "group": "nvidia",
-      "endpoint_url": "http://192.168.8.5:30000/llm-llama70b",
+      "group": "amd",
+      "service_type": "llm",
+      "endpoint_url": "http://192.168.8.5:30000/v1/chat/completions",
       "method": "POST",
-      "readiness_payload": {"prompt": "hi", "max_tokens": 5},
+      "readiness_payload": {
+        "messages": [{"role": "user", "content": "hi"}],
+        "max_tokens": 5,
+        "temperature": 0.0
+      },
       "workload_payload": {
-        "prompt": "Explain the key differences between supervised learning, unsupervised learning, and reinforcement learning in machine learning. Provide one real-world example for each.",
+        "messages": [{"role": "user", "content": "Explain the key differences between supervised learning, unsupervised learning, and reinforcement learning in machine learning. Provide one real-world example for each."}],
         "max_tokens": 350,
         "temperature": 0.7
       },
       "expected_status_codes": [200],
       "quality_criteria": "Response should correctly distinguish all three ML paradigms with accurate examples; evaluate technical accuracy and clarity",
-      "notes": "LLaMA 70B"
+      "notes": "LLaMA 70B on AMD ROCm GPU"
     },
     {
       "service_name": "llm-mixtral-llama70b",
-      "group": "nvidia",
-      "endpoint_url": "http://192.168.8.5:30000/llm-mixtral-llama70b",
+      "group": "amd",
+      "service_type": "llm",
+      "endpoint_url": "http://192.168.8.5:30000/v1/chat/completions",
       "method": "POST",
-      "readiness_payload": {"prompt": "hi", "max_tokens": 5},
+      "readiness_payload": {
+        "messages": [{"role": "user", "content": "hi"}],
+        "max_tokens": 5,
+        "temperature": 0.0
+      },
       "workload_payload": {
-        "prompt": "What are the five most important design considerations when building a distributed system for high availability? Be specific and concise.",
+        "messages": [{"role": "user", "content": "What are the five most important design considerations when building a distributed system for high availability? Be specific and concise."}],
         "max_tokens": 350,
         "temperature": 0.7
       },
       "expected_status_codes": [200],
       "quality_criteria": "Response should list 5 distinct, concrete distributed systems HA considerations (e.g. replication, failover, CAP, idempotency); evaluate relevance and depth",
-      "notes": "Mixtral+LLaMA 70B hybrid"
+      "notes": "Mixtral+LLaMA 70B hybrid on AMD ROCm GPU"
     },
     {
       "service_name": "llm-mixtral8x22b",
-      "group": "nvidia",
-      "endpoint_url": "http://192.168.8.5:30000/llm-mixtral8x22b",
+      "group": "amd",
+      "service_type": "llm",
+      "endpoint_url": "http://192.168.8.5:30000/v1/chat/completions",
       "method": "POST",
-      "readiness_payload": {"prompt": "hi", "max_tokens": 5},
+      "readiness_payload": {
+        "messages": [{"role": "user", "content": "hi"}],
+        "max_tokens": 5,
+        "temperature": 0.0
+      },
       "workload_payload": {
-        "prompt": "Write a Python function implementing binary search on a sorted list. Include type hints, a docstring, and handle edge cases.",
+        "messages": [{"role": "user", "content": "Write a Python function implementing binary search on a sorted list. Include type hints, a docstring, and handle edge cases."}],
         "max_tokens": 400,
         "temperature": 0.2
       },
       "expected_status_codes": [200],
       "quality_criteria": "Code should be correct binary search with type hints and docstring; evaluate correctness, edge case handling (empty list, single element, not found), and Pythonic style",
-      "notes": "Mixtral 8x22B MoE; low temperature for code generation"
+      "notes": "Mixtral 8x22B MoE on AMD ROCm GPU; low temperature for code generation"
     },
     {
       "service_name": "llm-nemotron-nano",
-      "group": "nvidia",
-      "endpoint_url": "http://192.168.8.5:30000/llm-nemotron-nano",
+      "group": "amd",
+      "service_type": "llm",
+      "endpoint_url": "http://192.168.8.5:30000/v1/chat/completions",
       "method": "POST",
-      "readiness_payload": {"prompt": "hi", "max_tokens": 5},
+      "readiness_payload": {
+        "messages": [{"role": "user", "content": "hi"}],
+        "max_tokens": 5,
+        "temperature": 0.0
+      },
       "workload_payload": {
-        "prompt": "List five practical, actionable tips for writing clean and maintainable Python code.",
+        "messages": [{"role": "user", "content": "List five practical, actionable tips for writing clean and maintainable Python code."}],
         "max_tokens": 250,
         "temperature": 0.7
       },
       "expected_status_codes": [200],
       "quality_criteria": "Response should provide 5 concrete, actionable Python tips; evaluate practicality and clarity (nano model may be less detailed but should still be coherent)",
-      "notes": "Nemotron-Nano; small/fast model"
+      "notes": "Nemotron-Nano on AMD RX 7900 XTX (ROCm); small/fast model; llama-server OpenAI-compatible API"
     },
     {
       "service_name": "llm-nemotron-super",
-      "group": "nvidia",
-      "endpoint_url": "http://192.168.8.5:30000/llm-nemotron-super",
+      "group": "amd",
+      "service_type": "llm",
+      "endpoint_url": "http://192.168.8.5:30000/v1/chat/completions",
       "method": "POST",
-      "readiness_payload": {"prompt": "hi", "max_tokens": 5},
+      "readiness_payload": {
+        "messages": [{"role": "user", "content": "hi"}],
+        "max_tokens": 5,
+        "temperature": 0.0
+      },
       "workload_payload": {
-        "prompt": "Analyze the architectural tradeoffs between monolithic and microservices architectures for a high-traffic e-commerce platform processing 50,000 orders per day. Include latency, scalability, and operational complexity.",
+        "messages": [{"role": "user", "content": "Analyze the architectural tradeoffs between monolithic and microservices architectures for a high-traffic e-commerce platform processing 50,000 orders per day. Include latency, scalability, and operational complexity."}],
         "max_tokens": 450,
         "temperature": 0.7
       },
       "expected_status_codes": [200],
       "quality_criteria": "Response should give a nuanced tradeoff analysis covering at least latency, scalability, and operational complexity; evaluate depth and accuracy for a large model",
-      "notes": "Nemotron-Super; large model, expect detailed output"
+      "notes": "Nemotron-Super on AMD ROCm GPU; large model, expect detailed output"
     },
     {
       "service_name": "llm-qwen327b",
-      "group": "nvidia",
-      "endpoint_url": "http://192.168.8.5:30000/llm-qwen327b",
+      "group": "amd",
+      "service_type": "llm",
+      "endpoint_url": "http://192.168.8.5:30000/v1/chat/completions",
       "method": "POST",
-      "readiness_payload": {"prompt": "hi", "max_tokens": 5},
+      "readiness_payload": {
+        "messages": [{"role": "user", "content": "hi"}],
+        "max_tokens": 5,
+        "temperature": 0.0
+      },
       "workload_payload": {
-        "prompt": "Explain how to implement a simple feedforward neural network from scratch using only NumPy. Describe the forward pass, loss computation, and backpropagation.",
+        "messages": [{"role": "user", "content": "Explain how to implement a simple feedforward neural network from scratch using only NumPy. Describe the forward pass, loss computation, and backpropagation."}],
         "max_tokens": 400,
         "temperature": 0.5
       },
       "expected_status_codes": [200],
       "quality_criteria": "Response should correctly describe feedforward NN, loss, and backprop with NumPy; evaluate mathematical correctness and code examples if present",
-      "notes": "Qwen3 27B"
+      "notes": "Qwen3 27B on AMD ROCm GPU"
     },
     {
       "service_name": "llm-wizardlm8x22b",
-      "group": "nvidia",
-      "endpoint_url": "http://192.168.8.5:30000/llm-wizardlm8x22b",
+      "group": "amd",
+      "service_type": "llm",
+      "endpoint_url": "http://192.168.8.5:30000/v1/chat/completions",
       "method": "POST",
-      "readiness_payload": {"prompt": "hi", "max_tokens": 5},
+      "readiness_payload": {
+        "messages": [{"role": "user", "content": "hi"}],
+        "max_tokens": 5,
+        "temperature": 0.0
+      },
       "workload_payload": {
-        "prompt": "Design a real-time recommendation system that can serve 10 million active users. Describe the key components: data ingestion, feature store, model serving, and cache layers.",
+        "messages": [{"role": "user", "content": "Design a real-time recommendation system that can serve 10 million active users. Describe the key components: data ingestion, feature store, model serving, and cache layers."}],
         "max_tokens": 450,
         "temperature": 0.7
       },
       "expected_status_codes": [200],
       "quality_criteria": "Response should describe a realistic recommendation system architecture covering all four requested components; evaluate completeness and engineering accuracy",
-      "notes": "WizardLM 8x22B MoE"
+      "notes": "WizardLM 8x22B MoE on AMD ROCm GPU"
     }
   ]
 }
