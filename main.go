@@ -296,6 +296,8 @@ func (s *Server) handleCommand(ctx context.Context, command string) (string, err
 	       return "", errors.New("unknown service")
        }
 
+       s.onCommandReceived(name)
+
        s.mu.Lock()
        if s.activeTask {
 	       // If a task is running, queue the switch and reject this command
@@ -353,18 +355,341 @@ func (s *Server) handleCommand(ctx context.Context, command string) (string, err
 }
 
 func (s *Server) handleStatusConnection(conn net.Conn) {
-       defer conn.Close()
+	defer conn.Close()
 
-       s.mu.RLock()
-       status := Status{
-	       Healthy:       true,
-	       LastActivated: s.lastActivated,
-	       ActiveTask:    s.activeTask,
-	       TaskStartedAt: s.taskStartedAt,
-	       TaskDoneAt:    s.taskDoneAt,
-	       PendingSwitch: s.pendingSwitch,
-       }
-       s.mu.RUnlock()
+	lockActive := s.lockFileExists()
 
-       _ = json.NewEncoder(conn).Encode(status)
+	s.mu.RLock()
+	var shutdownAfter time.Time
+	idleSeconds := 0.0
+	if s.config.IdleShutdownMinutes > 0 && !s.lastActivityAt.IsZero() {
+		idleSeconds = time.Since(s.lastActivityAt).Seconds()
+		shutdownAfter = s.lastActivityAt.Add(
+			time.Duration(s.config.IdleShutdownMinutes) * time.Minute)
+	}
+	status := Status{
+		Healthy:        true,
+		LastActivated:  s.lastActivated,
+		ActiveTask:     s.activeTask,
+		TaskStartedAt:  s.taskStartedAt,
+		TaskDoneAt:     s.taskDoneAt,
+		PendingSwitch:  s.pendingSwitch,
+		LastActivityAt: s.lastActivityAt,
+		LastTCPSeenAt:  s.lastTCPSeenAt,
+		LockActive:     lockActive,
+		ShutdownAfter:  shutdownAfter,
+		IdleSeconds:    idleSeconds,
+	}
+	s.mu.RUnlock()
+
+	_ = json.NewEncoder(conn).Encode(status)
+}
+
+// --- Idle Shutdown ---
+
+// onCommandReceived updates the activity clock and writes the lock file.
+// Called from handleCommand after the service name is confirmed valid.
+// No-op when idle shutdown is disabled (IdleShutdownMinutes == 0).
+func (s *Server) onCommandReceived(svc string) {
+	if s.config.IdleShutdownMinutes <= 0 {
+		return
+	}
+	s.mu.Lock()
+	s.lastActivityAt = time.Now()
+	s.mu.Unlock()
+	s.writeLock(svc)
+}
+
+func (s *Server) writeLock(svc string) {
+	dir := filepath.Dir(s.lockFilePath)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		log.Printf("idle-watcher: mkdirall %s: %v", dir, err)
+		return
+	}
+	data, _ := json.Marshal(map[string]string{
+		"service":       svc,
+		"started_at":    time.Now().UTC().Format(time.RFC3339),
+		"last_tcp_seen": "",
+	})
+	if err := os.WriteFile(s.lockFilePath, data, 0o600); err != nil {
+		log.Printf("idle-watcher: write lock: %v", err)
+	}
+}
+
+// refreshLock updates last_tcp_seen atomically via temp-file + rename.
+func (s *Server) refreshLock(lastTCPSeen time.Time) {
+	data, err := os.ReadFile(s.lockFilePath)
+	if err != nil {
+		return
+	}
+	var m map[string]string
+	if err := json.Unmarshal(data, &m); err != nil {
+		return
+	}
+	m["last_tcp_seen"] = lastTCPSeen.UTC().Format(time.RFC3339)
+	updated, _ := json.Marshal(m)
+	tmp := s.lockFilePath + ".tmp"
+	if err := os.WriteFile(tmp, updated, 0o600); err != nil {
+		return
+	}
+	_ = os.Rename(tmp, s.lockFilePath)
+}
+
+func (s *Server) deleteLock() {
+	_ = os.Remove(s.lockFilePath)
+}
+
+func (s *Server) lockFileExists() bool {
+	if s.lockFilePath == "" {
+		return false
+	}
+	_, err := os.Stat(s.lockFilePath)
+	return err == nil
+}
+
+func (s *Server) lockFileAge() time.Duration {
+	info, err := os.Stat(s.lockFilePath)
+	if err != nil {
+		return 0
+	}
+	return time.Since(info.ModTime())
+}
+
+// probeHasConnections returns true if any established inbound TCP connection
+// exists on the given local port, using ss(8) from iproute2.
+func probeHasConnections(port int) bool {
+	cmd := exec.Command("ss", "-tn", "state", "established",
+		fmt.Sprintf("sport = :%d", port))
+	out, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	// First line is the header; any additional line is an active connection.
+	return strings.Count(strings.TrimSpace(string(out)), "\n") >= 1
+}
+
+// readGPUUtilization returns the maximum GPU utilization % across all detected
+// GPUs. Checks AMD via sysfs first, then NVIDIA via nvidia-smi.
+// Returns -1 if no GPU is detected — callers must treat -1 as "do not shutdown".
+func readGPUUtilization() int {
+	max := -1
+
+	// AMD: /sys/class/drm/card*/device/gpu_busy_percent (amdgpu kernel driver)
+	matches, _ := filepath.Glob("/sys/class/drm/card*/device/gpu_busy_percent")
+	for _, p := range matches {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		val := 0
+		if _, err := fmt.Sscanf(strings.TrimSpace(string(data)), "%d", &val); err == nil {
+			if val > max {
+				max = val
+			}
+		}
+	}
+
+	// NVIDIA: nvidia-smi
+	out, err := exec.Command("nvidia-smi",
+		"--query-gpu=utilization.gpu",
+		"--format=csv,noheader,nounits").Output()
+	if err == nil {
+		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+			val := 0
+			if _, err := fmt.Sscanf(strings.TrimSpace(line), "%d", &val); err == nil {
+				if val > max {
+					max = val
+				}
+			}
+		}
+	}
+
+	return max
+}
+
+// readCPUUtilization returns total CPU usage % sampled over 1 second via /proc/stat.
+func readCPUUtilization() int {
+	type cpuStat struct{ idle, total uint64 }
+	sample := func() cpuStat {
+		data, err := os.ReadFile("/proc/stat")
+		if err != nil {
+			return cpuStat{}
+		}
+		for _, line := range strings.SplitN(string(data), "\n", 2) {
+			if !strings.HasPrefix(line, "cpu ") {
+				continue
+			}
+			fields := strings.Fields(line)
+			// fields[1:] = user nice system idle iowait irq softirq steal ...
+			var s cpuStat
+			for i, f := range fields[1:] {
+				var v uint64
+				fmt.Sscanf(f, "%d", &v)
+				s.total += v
+				if i == 3 { // idle column
+					s.idle = v
+				}
+			}
+			return s
+		}
+		return cpuStat{}
+	}
+
+	s1 := sample()
+	time.Sleep(1 * time.Second)
+	s2 := sample()
+	dTotal := s2.total - s1.total
+	dIdle := s2.idle - s1.idle
+	if dTotal == 0 {
+		return 0
+	}
+	return int(100 * (dTotal - dIdle) / dTotal)
+}
+
+// hardwarePollGate polls GPU and CPU utilization up to HardwarePollCount times,
+// with 60-second waits between polls. Returns true (safe to poweroff) only when
+// all polls are below threshold. Returns false on the first active poll, context
+// cancellation, or if a new command arrives during polling.
+func (s *Server) hardwarePollGate(ctx context.Context) bool {
+	threshold := s.config.HardwareIdleThresholdPercent
+	count := s.config.HardwarePollCount
+
+	s.mu.RLock()
+	baseline := s.lastActivityAt
+	s.mu.RUnlock()
+
+	for i := 0; i < count; i++ {
+		select {
+		case <-ctx.Done():
+			return false
+		default:
+		}
+
+		// Abort if a new command arrived since we entered the gate.
+		s.mu.RLock()
+		changed := s.lastActivityAt.After(baseline)
+		s.mu.RUnlock()
+		if changed {
+			log.Printf("hw-poll: new command received during gate, aborting shutdown")
+			return false
+		}
+
+		gpuUtil := readGPUUtilization()
+		cpuUtil := readCPUUtilization() // includes 1s sleep internally
+
+		if gpuUtil < 0 {
+			log.Printf("hw-poll %d/%d: GPU detection failed, aborting shutdown (conservative)", i+1, count)
+			return false
+		}
+		if gpuUtil > threshold || cpuUtil > threshold {
+			log.Printf("hw-poll %d/%d: GPU=%d%% CPU=%d%% → active, aborting shutdown",
+				i+1, count, gpuUtil, cpuUtil)
+			return false
+		}
+		log.Printf("hw-poll %d/%d: GPU=%d%% CPU=%d%% → idle", i+1, count, gpuUtil, cpuUtil)
+
+		if i < count-1 {
+			select {
+			case <-ctx.Done():
+				return false
+			case <-time.After(60 * time.Second):
+			}
+		}
+	}
+	return true
+}
+
+func (s *Server) triggerShutdown() {
+	log.Println("idle-watcher: all hardware polls confirmed idle, executing systemctl poweroff")
+	cmd := exec.Command("systemctl", "poweroff")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		log.Printf("idle-watcher: poweroff failed: %v: %s", err, strings.TrimSpace(string(out)))
+	}
+}
+
+// idleWatcher runs as a goroutine and triggers a graceful poweroff when the
+// host has been idle for idle_shutdown_minutes. Two paths lead to the hardware
+// poll gate:
+//
+//   - Path A (normal): no lock file AND no activity for idle_shutdown_minutes.
+//   - Path B (stale lock): lock file older than idle_shutdown_minutes with no
+//     TCP connections — handles hung or frozen AI services.
+func (s *Server) idleWatcher(ctx context.Context) {
+	idleTimeout := time.Duration(s.config.IdleShutdownMinutes) * time.Minute
+	drainGrace := time.Duration(s.config.IdleDrainGraceMinutes) * time.Minute
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	log.Printf("idle-watcher: started — idle_timeout=%v drain_grace=%v hw_threshold=%d%% hw_polls=%d service_port=%d",
+		idleTimeout, drainGrace,
+		s.config.HardwareIdleThresholdPercent,
+		s.config.HardwarePollCount,
+		s.config.ServicePort,
+	)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.mu.RLock()
+			lastActivity := s.lastActivityAt
+			s.mu.RUnlock()
+
+			lockExists := s.lockFileExists()
+			lockAge := s.lockFileAge()
+
+			// TCP probe: if connections are active, refresh lock and skip checks.
+			if port := s.config.ServicePort; port > 0 {
+				if probeHasConnections(port) {
+					now := time.Now()
+					s.mu.Lock()
+					s.lastTCPSeenAt = now
+					s.mu.Unlock()
+					s.refreshLock(now)
+					log.Printf("idle-watcher: TCP connection active on :%d, lock refreshed", port)
+					continue
+				}
+			}
+
+			// No TCP connections this tick. Check drain grace.
+			s.mu.RLock()
+			lastTCP := s.lastTCPSeenAt
+			s.mu.RUnlock()
+
+			if lockExists && !lastTCP.IsZero() && time.Since(lastTCP) >= drainGrace {
+				log.Printf("idle-watcher: drain grace elapsed (last TCP %v ago), clearing lock",
+					time.Since(lastTCP).Round(time.Second))
+				s.deleteLock()
+				lockExists = false
+			}
+
+			// Path A: no lock file, idle timer expired.
+			if !lockExists && time.Since(lastActivity) >= idleTimeout {
+				log.Printf("idle-watcher: %.0f min idle, no active lock — entering hardware poll gate",
+					time.Since(lastActivity).Minutes())
+				if s.hardwarePollGate(ctx) {
+					s.triggerShutdown()
+					return
+				}
+				// Hardware was active: bump clock so we don't retry immediately.
+				s.mu.Lock()
+				s.lastActivityAt = time.Now()
+				s.mu.Unlock()
+				continue
+			}
+
+			// Path B: stale lock (hung/frozen service), idle timer expired.
+			if lockExists && lockAge >= idleTimeout {
+				log.Printf("idle-watcher: lock is %.0f min old with no TCP — stale lock, entering hardware poll gate",
+					lockAge.Minutes())
+				if s.hardwarePollGate(ctx) {
+					s.triggerShutdown()
+					return
+				}
+				// Hardware was active: refresh mtime to avoid immediate retry.
+				s.refreshLock(time.Now())
+			}
+		}
+	}
 }

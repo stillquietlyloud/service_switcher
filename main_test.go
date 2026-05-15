@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 type fakeStarter struct {
@@ -111,5 +112,118 @@ func TestHandleCommandPropagatesStarterErrors(t *testing.T) {
 
 	if _, err := server.handleCommand(context.Background(), "start service01\n"); err == nil {
 		t.Fatal("expected starter error")
+	}
+}
+
+func TestLockFileLifecycle(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	srv := &Server{
+		config:       Config{Services: map[string]string{"s1": "/etc/systemd/system/s1.service"}},
+		starter:      &fakeStarter{},
+		lockFilePath: filepath.Join(dir, "active.lock"),
+	}
+
+	if srv.lockFileExists() {
+		t.Fatal("lock should not exist initially")
+	}
+
+	srv.writeLock("s1")
+	if !srv.lockFileExists() {
+		t.Fatal("lock should exist after writeLock")
+	}
+
+	age := srv.lockFileAge()
+	if age < 0 || age > 5*time.Second {
+		t.Fatalf("unexpected lock age: %v", age)
+	}
+
+	srv.deleteLock()
+	if srv.lockFileExists() {
+		t.Fatal("lock should not exist after deleteLock")
+	}
+}
+
+func TestOnCommandReceived_UpdatesActivity(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	srv := &Server{
+		config: Config{
+			IdleShutdownMinutes: 15,
+			Services:            map[string]string{"s1": "/etc/systemd/system/s1.service"},
+		},
+		starter:      &fakeStarter{},
+		lockFilePath: filepath.Join(dir, "active.lock"),
+	}
+
+	before := time.Now()
+	srv.onCommandReceived("s1")
+	after := time.Now()
+
+	srv.mu.RLock()
+	activity := srv.lastActivityAt
+	srv.mu.RUnlock()
+
+	if activity.Before(before) || activity.After(after) {
+		t.Fatalf("lastActivityAt %v not in expected range [%v, %v]", activity, before, after)
+	}
+	if !srv.lockFileExists() {
+		t.Fatal("lock file should exist after onCommandReceived")
+	}
+}
+
+func TestOnCommandReceived_NoOpWhenDisabled(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	srv := &Server{
+		config: Config{
+			IdleShutdownMinutes: 0,
+			Services:            map[string]string{"s1": "/etc/systemd/system/s1.service"},
+		},
+		starter:      &fakeStarter{},
+		lockFilePath: filepath.Join(dir, "active.lock"),
+	}
+
+	srv.onCommandReceived("s1")
+	if srv.lockFileExists() {
+		t.Fatal("lock file should not be created when idle shutdown is disabled")
+	}
+}
+
+func TestReadGPUUtilization_SaneRange(t *testing.T) {
+	t.Parallel()
+
+	val := readGPUUtilization()
+	if val < -1 || val > 100 {
+		t.Fatalf("readGPUUtilization returned out-of-range value: %d", val)
+	}
+}
+
+func TestHardwarePollGate_AbortsOnContextCancel(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	srv := &Server{
+		config: Config{
+			HardwareIdleThresholdPercent: 5,
+			HardwarePollCount:            10,
+			Services:                     map[string]string{"s1": "/etc/systemd/system/s1.service"},
+		},
+		starter:      &fakeStarter{},
+		lockFilePath: filepath.Join(dir, "active.lock"),
+	}
+
+	srv.mu.Lock()
+	srv.lastActivityAt = time.Now()
+	srv.mu.Unlock()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if srv.hardwarePollGate(ctx) {
+		t.Fatal("hardwarePollGate should return false on cancelled context")
 	}
 }

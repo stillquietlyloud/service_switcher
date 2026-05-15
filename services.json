@@ -1,6 +1,11 @@
 {
   "command_listen_address": "0.0.0.0:20100",
   "status_listen_address": "0.0.0.0:30100",
+  "idle_shutdown_minutes": 15,
+  "idle_drain_grace_minutes": 2,
+  "hardware_idle_threshold_percent": 5,
+  "hardware_poll_count": 5,
+  "service_port": 30000,
   "services": {
     "image-flux": "/etc/systemd/system/image-flux.service",
     "image-qwen": "/etc/systemd/system/image-qwen.service",
