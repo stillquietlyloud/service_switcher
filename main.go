@@ -27,9 +27,14 @@ const (
 )
 
 type Config struct {
-	CommandListenAddress string            `json:"command_listen_address"`
-	StatusListenAddress  string            `json:"status_listen_address"`
-	Services             map[string]string `json:"services"`
+	CommandListenAddress         string            `json:"command_listen_address"`
+	StatusListenAddress          string            `json:"status_listen_address"`
+	IdleShutdownMinutes          int               `json:"idle_shutdown_minutes"`
+	IdleDrainGraceMinutes        int               `json:"idle_drain_grace_minutes"`
+	HardwareIdleThresholdPercent int               `json:"hardware_idle_threshold_percent"`
+	HardwarePollCount            int               `json:"hardware_poll_count"`
+	ServicePort                  int               `json:"service_port"`
+	Services                     map[string]string `json:"services"`
 }
 
 type ServiceStarter interface {
@@ -59,15 +64,25 @@ type Server struct {
 	taskStartedAt time.Time // when the current task started
 	taskDoneAt    time.Time // when the last task completed
 	pendingSwitch string    // if non-empty, a switch is queued
+
+	// Idle shutdown state
+	lastActivityAt time.Time // updated on command received (mutex-protected)
+	lastTCPSeenAt  time.Time // last time TCP probe found connections (mutex-protected)
+	lockFilePath   string    // e.g. /run/service-switcher/active.lock
 }
 
 type Status struct {
-	Healthy         bool      `json:"healthy"`
-	LastActivated   string    `json:"last_activated"`
-	ActiveTask      bool      `json:"active_task"`
-	TaskStartedAt   time.Time `json:"task_started_at,omitempty"`
-	TaskDoneAt      time.Time `json:"task_done_at,omitempty"`
-	PendingSwitch   string    `json:"pending_switch,omitempty"`
+	Healthy        bool      `json:"healthy"`
+	LastActivated  string    `json:"last_activated"`
+	ActiveTask     bool      `json:"active_task"`
+	TaskStartedAt  time.Time `json:"task_started_at,omitempty"`
+	TaskDoneAt     time.Time `json:"task_done_at,omitempty"`
+	PendingSwitch  string    `json:"pending_switch,omitempty"`
+	LastActivityAt time.Time `json:"last_activity_at,omitempty"`
+	LastTCPSeenAt  time.Time `json:"last_tcp_seen_at,omitempty"`
+	LockActive     bool      `json:"lock_active"`
+	ShutdownAfter  time.Time `json:"shutdown_after,omitempty"`
+	IdleSeconds    float64   `json:"idle_seconds,omitempty"`
 }
 
 func main() {
@@ -85,8 +100,9 @@ func main() {
 	log.Printf("listening on status port: %s", config.StatusListenAddress)
 
 	server := &Server{
-		config:  config,
-		starter: SystemctlStarter{},
+		config:       config,
+		starter:      SystemctlStarter{},
+		lockFilePath: "/run/service-switcher/active.lock",
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -130,6 +146,16 @@ func loadConfig(path string) (Config, error) {
 		}
 	}
 
+	if config.IdleDrainGraceMinutes <= 0 {
+		config.IdleDrainGraceMinutes = 2
+	}
+	if config.HardwareIdleThresholdPercent <= 0 {
+		config.HardwareIdleThresholdPercent = 5
+	}
+	if config.HardwarePollCount <= 0 {
+		config.HardwarePollCount = 5
+	}
+
 	return config, nil
 }
 
@@ -163,6 +189,15 @@ func (s *Server) run(ctx context.Context) error {
 		return fmt.Errorf("listen for status: %w", err)
 	}
 	defer statusListener.Close()
+
+	if s.config.IdleShutdownMinutes > 0 {
+		s.mu.Lock()
+		s.lastActivityAt = time.Now()
+		s.mu.Unlock()
+		go s.idleWatcher(ctx)
+		log.Printf("idle-shutdown enabled: %d minutes, service_port: %d",
+			s.config.IdleShutdownMinutes, s.config.ServicePort)
+	}
 
 	errCh := make(chan error, 2)
 

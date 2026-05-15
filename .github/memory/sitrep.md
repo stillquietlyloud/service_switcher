@@ -28,6 +28,10 @@
 - Install voice files for TTS services (e.g. F5-TTS requires speaker reference audio in `/opt/tts-f5/voices/`)
 - Start service-stopper then run LLM group: `sudo systemctl start service-stopper.service && python3 test/lan_workload_test.py --groups amd`
 - OR bridge via translator: switch to translator-accurate (stops image), then run LLM tests
+- **[NEW - 2026-05-16]** Idle shutdown integration plan written → `docs/engineering/idle-shutdown-plan.md`
+  - Plan replaces `service-stopper.service` + `auto-shutdown.service` with integrated idle watcher
+  - Requires explicit approval before implementing (modifies poweroff behavior)
+  - See P-021 in action_tracker.md
 
 ---
 

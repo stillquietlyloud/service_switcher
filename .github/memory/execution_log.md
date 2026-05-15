@@ -5,6 +5,25 @@ Append one entry per execution. Most recent entry at top.
 ---
 
 ## Run
+- Date: 2026-05-16
+- Trigger: User requested architecture evaluation — integrate idle shutdown into service-switcher to replace service-stopper and auto-shutdown services
+- Agent: AI Service Workload Agent
+- Files changed: docs/engineering/idle-shutdown-plan.md (new), .github/memory/sitrep.md (updated), .github/memory/action_tracker.md (updated P-021/P-022)
+- Commands run: read main.go, services.json, .github/memory/* (read-only analysis)
+
+### Artifacts produced
+- docs/engineering/idle-shutdown-plan.md — full implementation plan
+
+### Outcome
+- Feasibility confirmed: LOW-MEDIUM complexity, LOW risk, fully additive to existing code
+- Plan: ~60-80 new lines in main.go, no existing logic changed
+- Replaces service-stopper.service (GPU polling) with TCP connection probe via `ss`
+- Replaces auto-shutdown.service with idle watcher goroutine + `systemctl poweroff`
+- P-021: done. P-022: todo (awaiting user approval before implementation)
+
+---
+
+## Run
 - Date: 2026-05-15 (LAN workload test harness smoke tests)
 - Trigger: user requested real-workload quality test harness using switcher for all service types
 - Agent: AI Service Workload Agent

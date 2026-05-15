@@ -24,3 +24,5 @@ Track each finding/remediation point until closure.
 | P-018 | workload-test | Smoke-test image-sdxl | AI Service Workload Agent | low | done | workload_20260515_195653Z_image-sdxl.png 1.4MB — PASSED | 2026-05-15 |
 | P-019 | workload-test | TTS voice files missing on tts-f5 (and likely all TTS services) | AI Service Workload Agent | medium | blocked | GET /voices returns []; "Voice 'en-female' not found" | 2026-05-15 |
 | P-020 | workload-test | Smoke-test LLM services (9 services) | AI Service Workload Agent | medium | todo | Requires service-stopper; bridge via translator if needed | 2026-05-15 |
+| P-021 | architecture | Plan: integrate idle-shutdown into service-switcher (replace service-stopper + auto-shutdown) | AI Service Workload Agent | medium | done | docs/engineering/idle-shutdown-plan.md v2 (hybrid lock+hardware) | 2026-05-16 |
+| P-022 | architecture | Implement idle-shutdown integration (awaiting user approval) | user | high | todo | Pending review of idle-shutdown-plan.md v2 | 2026-05-16 |
