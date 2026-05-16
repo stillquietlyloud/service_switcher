@@ -4,8 +4,8 @@
   "timeouts": {
     "socket_seconds": 10,
     "http_seconds": 120,
-    "readiness_seconds": 900,
-    "shutdown_seconds": 300
+    "readiness_seconds": 150,
+    "shutdown_seconds": 200
   },
   "wol": {
     "enabled": false,

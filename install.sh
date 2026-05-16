@@ -25,7 +25,8 @@ install -m 0644 "$SCRIPT_DIR/service-switcher.service" "$UNIT_DEST"
 
 info "Reloading systemd and enabling service …"
 systemctl daemon-reload
-systemctl enable --now "$UNIT_NAME"
+systemctl enable "$UNIT_NAME"
+systemctl restart "$UNIT_NAME"
 
 info "service_switcher installed and enabled at boot."
 info "  Command socket: nc 127.0.0.1 20100"
