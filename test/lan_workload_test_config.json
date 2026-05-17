@@ -161,16 +161,16 @@
       "service_name": "tts-qwen3-clone",
       "group": "nvidia",
       "service_type": "tts",
-      "endpoint_url": "http://192.168.8.5:30000/tts",
+      "endpoint_url": "http://192.168.8.5:30000/v1/audio/speech",
       "method": "POST",
-      "readiness_payload": {"text": "test"},
+      "readiness_payload": {"input": "test"},
       "workload_payload": {
-        "text": "Good morning. This is a voice cloning quality test. Notice the naturalness of the intonation and how the voice handles both short and longer sentences with varied punctuation.",
-        "language": "en"
+        "input": "Good morning. This is a voice design quality test. Notice the naturalness of the intonation and how the voice handles both short and longer sentences with varied punctuation.",
+        "lang": "en"
       },
       "expected_status_codes": [200],
-      "quality_criteria": "Voice should sound natural with cloned characteristics; evaluate similarity to target voice, prosody variation, and absence of glitches",
-      "notes": "Qwen3 voice clone mode on NVIDIA GPU; REQUIRES voice files configured"
+      "quality_criteria": "Audio should be clear speech with natural prosody; no robotic artifacts, correct pronunciation, comfortable listening pace",
+      "notes": "Qwen3-TTS Voice-Design on NVIDIA GPU; uses OpenAI-compatible /v1/audio/speech endpoint; input field required (not text); no fixed voice roster — voice is designed from text prompt on the fly"
     },
     {
       "service_name": "tts-qwen3-design",

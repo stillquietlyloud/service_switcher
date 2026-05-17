@@ -1,17 +1,17 @@
 # SITREP
 
 ## Run Metadata
-- Date: 2026-05-15 (latest run)
-- Trigger: LAN workload test harness — smoke tests for image-sdxl and translator-accurate services
+- Date: 2026-05-16 (latest run)
+- Trigger: Bug-fix and service validation — image-sdxl, tts-qwen3-clone, translator-accurate, llm-qwen327b
 - Agent: AI Service Workload Agent
 
 ## Latest Test Results
 | Service | Type | Result | Artifact | Latency |
 |---------|------|--------|----------|--------|
-| translator-accurate | amd/translator | ✅ PASSED | workload_20260515_181237Z_translator-accurate.txt (366 B) | 22.9s |
-| image-sdxl | nvidia/image | ✅ PASSED | workload_20260515_195653Z_image-sdxl.png (1.4 MB) | 8.6s |
-| tts-f5 | nvidia/tts | ❌ FAILED | none | n/a — Voice 'en-female' not found |
-| LLM services (9) | amd/llm | ⏭ NOT TESTED | — | requires service-stopper |
+| image-sdxl | nvidia/image | ✅ PASSED | workload_20260516_073832Z_image-sdxl.png (1.4 MB) | 8.2s |
+| tts-qwen3-clone | nvidia/tts | ✅ PASSED | audio artifact | ~40s |
+| translator-accurate | amd/translator | ✅ PASSED | workload_20260516_074102Z_translator-accurate.txt | 38.3s |
+| llm-qwen327b | amd/llm | ✅ PASSED | workload_20260516_074015Z_llm-qwen327b.txt | — |
 
 ## Current Service State
 - `image-sdxl`: active (test just ran)

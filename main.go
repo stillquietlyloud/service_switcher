@@ -24,6 +24,7 @@ const (
 	defaultCommandListenAddress = "0.0.0.0:20100"
 	defaultStatusListenAddress  = "0.0.0.0:30100"
 	maxCommandBytes             = 1024
+	activeServiceFilePath       = "/var/log/service-switcher/active.txt"
 )
 
 type Config struct {
@@ -178,6 +179,16 @@ func normalizeUnit(location string) (string, error) {
 }
 
 func (s *Server) run(ctx context.Context) error {
+	// Seed active.txt from an existing lock file so it survives restarts.
+	if s.lockFilePath != "" {
+		if data, err := os.ReadFile(s.lockFilePath); err == nil {
+			var m map[string]string
+			if json.Unmarshal(data, &m) == nil && m["service"] != "" {
+				writeActiveFile(m["service"])
+			}
+		}
+	}
+
 	commandListener, err := net.Listen("tcp", s.config.CommandListenAddress)
 	if err != nil {
 		return fmt.Errorf("listen for commands: %w", err)
@@ -400,6 +411,16 @@ func (s *Server) onCommandReceived(svc string) {
 	s.writeLock(svc)
 }
 
+func writeActiveFile(svc string) {
+	if err := os.MkdirAll(filepath.Dir(activeServiceFilePath), 0o755); err != nil {
+		log.Printf("active-service-file: mkdirall: %v", err)
+		return
+	}
+	if err := os.WriteFile(activeServiceFilePath, []byte(svc+"\n"), 0o644); err != nil {
+		log.Printf("active-service-file: write: %v", err)
+	}
+}
+
 func (s *Server) writeLock(svc string) {
 	dir := filepath.Dir(s.lockFilePath)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -414,6 +435,7 @@ func (s *Server) writeLock(svc string) {
 	if err := os.WriteFile(s.lockFilePath, data, 0o600); err != nil {
 		log.Printf("idle-watcher: write lock: %v", err)
 	}
+	writeActiveFile(svc)
 }
 
 // refreshLock updates last_tcp_seen atomically via temp-file + rename.
@@ -437,6 +459,7 @@ func (s *Server) refreshLock(lastTCPSeen time.Time) {
 
 func (s *Server) deleteLock() {
 	_ = os.Remove(s.lockFilePath)
+	_ = os.Remove(activeServiceFilePath)
 }
 
 func (s *Server) lockFileExists() bool {

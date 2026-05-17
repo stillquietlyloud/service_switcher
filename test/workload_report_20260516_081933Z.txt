@@ -1,0 +1,53 @@
+timestamp_utc:   2026-05-16T08:17:23.317748+00:00
+config_path:     /git/service_switcher/test/lan_workload_test_config.json
+command_address: 192.168.8.5:20100
+active_groups:   nvidia, amd
+
+summary:  total=4  passed=4  failed=0  artifacts_saved=4
+
+============================================================
+service:  image-sdxl  [nvidia]
+endpoint: http://192.168.8.5:30000/generate
+switch:   ok=True  response='ok'  elapsed=0.004s
+warmup:   15.067s
+workload: ok=True  status=200  elapsed=8.182s  content_type=application/json
+artifact: workload_20260516_081746Z_image-sdxl.png  (1,514,397 bytes)  [image/png]
+latency:  min=0.048s  avg=2.1s  p50=0.05s  p95=8.182s  p99=8.182s  [4 samples]
+quality:  Image should show Japanese garden with cherry blossoms and koi pond; clean composition, no distortion, Ghibli-style rendering
+result:   passed  |  ok
+response: {"image":"iVBORw0KGgoAAAANSUhEUgAABAAAAAQACAIAAADwf7zUAAEAAElEQVR4nJz9aZMkSZIliD0+RFTN3D0iMrOyKqtquntmDxB+L7Z7drD7R0AYNAFE+AcgEAFYYJd2po868ojICHczVRE+8IHV3D0ys3oasA8R7uZmqqKXyOPHjx/T//V//B8QGoExbXcHM1NypllSEjKYwEyRkZHMospAAsTC7hkBFiIgkZEOz8zc9l2btt640eUyr9vIBVAmRnoIQEmtL6e+NmJkuAURIpABMCJCmICMSFG1aU1kXZp77ObJBABJqsQZ6cYikfAIFiVVT4g293AkMTITCYAzCcB1TF07JZZTTyIhCDESyhTuJBSBJsKZmcgkYbLwCFgYKIkoAwkAHO
+
+============================================================
+service:  tts-qwen3-clone  [nvidia]
+endpoint: http://192.168.8.5:30000/v1/audio/speech
+switch:   ok=True  response='ok'  elapsed=0.014s
+warmup:   28.015s
+workload: ok=True  status=200  elapsed=8.801s  content_type=audio/wav
+artifact: workload_20260516_081823Z_tts-qwen3-clone.wav  (503,084 bytes)  [audio/wav]
+latency:  min=1.369s  avg=3.289s  p50=1.451s  p95=8.801s  p99=8.801s  [4 samples]
+quality:  Audio should be clear speech with natural prosody; no robotic artifacts, correct pronunciation, comfortable listening pace
+result:   passed  |  ok
+
+============================================================
+service:  llm-qwen327b  [amd]
+endpoint: http://192.168.8.5:30000/v1/chat/completions
+switch:   ok=True  response='ok'  elapsed=0.025s
+warmup:   13.047s
+workload: ok=True  status=200  elapsed=3.296s  content_type=application/json; charset=utf-8
+artifact: workload_20260516_081844Z_llm-qwen327b.txt  (50 bytes)  [text/plain]
+latency:  min=0.689s  avg=1.37s  p50=0.69s  p95=3.296s  p99=3.296s  [4 samples]
+quality:  Response should correctly describe feedforward NN, loss, and backprop with NumPy; evaluate mathematical correctness and code examples if present
+result:   passed  |  ok
+response: .5-vl-max 模型在 2025 年 6 月 19 日发布了
+
+============================================================
+service:  translator-accurate  [amd]
+endpoint: http://192.168.8.5:30000/v1/translate
+switch:   ok=True  response='ok'  elapsed=0.025s
+warmup:   6.009s
+workload: ok=True  status=200  elapsed=37.814s  content_type=application/json
+artifact: workload_20260516_081930Z_translator-accurate.txt  (371 bytes)  [text/plain]
+latency:  min=0.951s  avg=10.22s  p50=0.958s  p95=37.814s  p99=37.814s  [4 samples]
+quality:  French translation should be accurate and natural; preserve meaning, technical terms, and sentence structure from the English source
+result:   passed  |  ok
+response: L'intelligence artificielle transforme la manière dont nous vivons et travaillons. Les modèles d'apprentissage automatique peuvent désormais accomplir des tâches complexes qui étaient autrefois considérées comme nécessitant l'intelligence humaine, y compris la reconnaissance d'images, la compréhension du langage naturel et la prise de décisions stratégiques.
